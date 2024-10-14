@@ -1,0 +1,70 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+<title>MediaPipe FaceMesh test</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<h1>MediaPipe FaceMesh test</h1>
+<div class="container">
+  <video id="videoElement" playsinline></video>
+  <canvas id="canvasElement"></canvas>
+</div>
+<hr>
+<footer>
+<a href=./>demo index</a><br>
+lib: <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Face Mesh - mediapipe</a><br>
+</footer>
+
+<script type="module">
+import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+
+
+const videoElement = document.getElementById('videoElement');
+const canvasElement = document.getElementById('canvasElement');
+const canvasCtx = canvasElement.getContext('2d');
+
+function onResults(results) {
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.drawImage(
+      results.image, 0, 0, canvasElement.width, canvasElement.height);
+  if (results.multiHandLandmarks) {
+    for (const landmarks of results.multiHandLandmarks) {
+      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                     {color: '#00FF00', lineWidth: 5});
+      drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+    }
+  }
+  canvasCtx.restore();
+}
+
+const hands = new Hands({locateFile: (file) => {
+  return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+}}); 
+hands.setOptions({
+  maxNumHands: 2,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
+});
+hands.onResults(onResults);
+
+const camera = new Camera(videoElement, {
+  onFrame: async () => {
+    const dpi = devicePixelRatio;
+    canvasElement.width = videoElement.videoWidth * dpi;
+    canvasElement.height = videoElement.videoHeight * dpi;
+    await faceMesh.send({ image: videoElement });
+  },
+  width: 1280,
+  height: 720,
+});
+camera.start();
+</script>
+
+</body>
+</html>
