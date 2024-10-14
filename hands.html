@@ -11,7 +11,7 @@
 <h1>手の動きの分析</h1>
 <p>ピアノを弾くヒトの指先の分析への応用を考えています</p>
 <div class="container">
-  <video id="videoElement" autoplay playsinline></video>
+  <video id="videoElement" playsinline></video>
   <canvas id="canvasElement"></canvas>
 </div>
 <hr>
@@ -25,32 +25,29 @@ import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
 
 const videoElement = document.getElementById('videoElement');
 const canvasElement = document.getElementById('canvasElement');
+  
 const canvasCtx = canvasElement.getContext('2d');
 
-function onResults(results) {
+const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
+
+hands.setOptions({
+  maxNumHands: 10,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5,
+});
+hands.onResults((res) => {
+  const w = canvasElement.width;
+  const h = canvasElement.height;
   canvasCtx.save();
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  canvasCtx.drawImage(
-      results.image, 0, 0, canvasElement.width, canvasElement.height);
-  if (results.multiHandLandmarks) {
-    for (const landmarks of results.multiHandLandmarks) {
-      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
-                     {color: '#00FF00', lineWidth: 5});
-      drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+  if (res.multiHandLandmarks) {
+    for (const landmarks of res.multiHandLandmarks) {
+      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: "#222", lineWidth: 5 });
+      drawLandmarks(canvasCtx, landmarks, { color: "#222", lineWidth: 2 });
     }
   }
   canvasCtx.restore();
-}
-
-const hands = new Hands({locateFile: (file) => {
-  return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-}}); 
-hands.setOptions({
-  maxNumHands: 2,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5
 });
-hands.onResults(onResults);
 
 const camera = new Camera(videoElement, {
   onFrame: async () => {
