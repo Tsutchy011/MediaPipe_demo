@@ -36,18 +36,20 @@ hands.setOptions({
   minDetectionConfidence: 0.5,
   minTrackingConfidence: 0.5,
 });
-hands.onResults((res) => {
-  const w = canvasElement.width;
-  const h = canvasElement.height;
+function onResults(results) {
   canvasCtx.save();
-  if (res.multiHandLandmarks) {
-    for (const landmarks of res.multiHandLandmarks) {
-      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: "#222", lineWidth: 5 });
-      drawLandmarks(canvasCtx, landmarks, { color: "#222", lineWidth: 2 });
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.drawImage(
+      results.image, 0, 0, canvasElement.width, canvasElement.height);
+  if (results.multiHandLandmarks) {
+    for (const landmarks of results.multiHandLandmarks) {
+      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                     {color: '#00FF00', lineWidth: 5});
+      drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
     }
   }
   canvasCtx.restore();
-});
+}
 
 const camera = new Camera(videoElement, {
   onFrame: async () => {
