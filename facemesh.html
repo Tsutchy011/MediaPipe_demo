@@ -24,8 +24,8 @@ lib: <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Fac
 import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
 
 
-const videoElement = document.getElementsByClassName('input_video')[0];
-const canvasElement = document.getElementsByClassName('output_canvas')[0];
+const videoElement = document.getElementById('videoElement');
+const canvasElement = document.getElementById('canvasElement');
 const canvasCtx = canvasElement.getContext('2d');
 
 function onResults(results) {
