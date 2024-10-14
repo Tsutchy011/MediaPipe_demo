@@ -1,8 +1,10 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>MediaPipe FaceMesh test</title>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+</head>
 <link rel="stylesheet" href="style.css">
 </head>
 
@@ -12,9 +14,6 @@
   <video id="videoElement" playsinline></video>
   <canvas id="canvasElement"></canvas>
 </div>
-<label><input type="checkbox" id="showimg">show original image</label>
-<label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
-<label><input type="checkbox" id="backcameramode">backcamera mode</label>
 <hr>
 <footer>
 <a href=./>demo index</a><br>
@@ -22,64 +21,48 @@ lib: <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Fac
 </footer>
 
 <script type="module">
-import { Camera } from "https://code4fukui.github.io/MediaPipe_demo/Camera.js";
+const videoElement = document.getElementsByClassName('input_video')[0];
+const canvasElement = document.getElementsByClassName('output_canvas')[0];
+const canvasCtx = canvasElement.getContext('2d');
 
-const g = canvasElement.getContext("2d");
-
-const faceMesh = new FaceMesh({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}` });
-
-faceMesh.setOptions({
-  maxNumFaces: 5,
-  refineLandmarks: true,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5,
-});
-faceMesh.onResults((res) => {
-  const w = canvasElement.width;
-  const h = canvasElement.height;
-  g.save();
-  if (mirrormode.checked) {
-    g.scale(-1, 1);
-    g.translate(-w, 0);
-    /* // 180度回転
-    g.translate(w / 2, h / 2);
-    g.rotate(Math.PI);
-    g.translate(-w / 2, -h / 2);
-    */
-  }
-  g.clearRect(0, 0, w, h);
-  if (showimg.checked) {
-    g.drawImage(res.image, 0, 0, w, h);
-  }
-  if (res.multiFaceLandmarks) {
-    for (const landmarks of res.multiFaceLandmarks) {
-      drawConnectors(g, landmarks, FACEMESH_TESSELATION, { color: 'gray', lineWidth: 1 });
-      drawConnectors(g, landmarks, FACEMESH_RIGHT_EYE, { color: 'black' });
-      drawConnectors(g, landmarks, FACEMESH_RIGHT_EYEBROW, { color: 'gray' });
-      drawConnectors(g, landmarks, FACEMESH_RIGHT_IRIS, { color: 'black' });
-      drawConnectors(g, landmarks, FACEMESH_LEFT_EYE, { color: 'black' });
-      drawConnectors(g, landmarks, FACEMESH_LEFT_EYEBROW, { color: 'gray' });
-      drawConnectors(g, landmarks, FACEMESH_LEFT_IRIS, { color: 'black' });
-      drawConnectors(g, landmarks, FACEMESH_FACE_OVAL, { color: "balck" });
-      drawConnectors(g, landmarks, FACEMESH_LIPS, { color: "red" });
+function onResults(results) {
+  canvasCtx.save();
+  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  canvasCtx.drawImage(
+      results.image, 0, 0, canvasElement.width, canvasElement.height);
+  if (results.multiFaceLandmarks) {
+    for (const landmarks of results.multiFaceLandmarks) {
+      drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION,
+                     {color: '#C0C0C070', lineWidth: 1});
+      drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, {color: '#FF3030'});
+      drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, {color: '#FF3030'});
+      drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, {color: '#30FF30'});
+      drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, {color: '#30FF30'});
+      drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, {color: '#E0E0E0'});
+      drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, {color: '#E0E0E0'});
     }
   }
-  g.restore();
+  canvasCtx.restore();
+}
+
+const faceMesh = new FaceMesh({locateFile: (file) => {
+  return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+}});
+faceMesh.setOptions({
+  maxNumFaces: 1,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
 });
+faceMesh.onResults(onResults);
 
 const camera = new Camera(videoElement, {
   onFrame: async () => {
-    const dpi = devicePixelRatio;
-    canvasElement.width = videoElement.videoWidth * dpi;
-    canvasElement.height = videoElement.videoHeight * dpi;
-    await faceMesh.send({ image: videoElement });
+    await faceMesh.send({image: videoElement});
   },
   width: 1280,
-  height: 720,
-  backcamera: backcameramode.checked,
+  height: 720
 });
 camera.start();
-backcameramode.onchange = () => camera.flip();
 </script>
 
 </body>
