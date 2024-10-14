@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>MediaPipe FaceMesh test</title>
+<title>MediaPipe - Hands</title>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
@@ -9,7 +9,7 @@
 </head>
 
 <body>
-<h1>MediaPipe FaceMesh test</h1>
+<h1>手の動きの分析（ピアノを弾くヒトの指先の分析への応用を考えています）</h1>
 <div class="container">
   <video id="videoElement" playsinline></video>
   <canvas id="canvasElement"></canvas>
@@ -22,7 +22,6 @@ lib: <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Fac
 
 <script type="module">
 import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
-
 
 const videoElement = document.getElementById('videoElement');
 const canvasElement = document.getElementById('canvasElement');
@@ -58,7 +57,7 @@ const camera = new Camera(videoElement, {
     const dpi = devicePixelRatio;
     canvasElement.width = videoElement.videoWidth * dpi;
     canvasElement.height = videoElement.videoHeight * dpi;
-    await faceMesh.send({ image: videoElement });
+    await hands.send({ image: videoElement });
   },
   width: 1280,
   height: 720,
