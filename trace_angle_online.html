@@ -4,6 +4,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <link rel="stylesheet" href="style.css">
   </head>
 
@@ -19,6 +20,11 @@
     .landmark-grid-container {
   display: none;  /* グリッド表示を無効化 */
     }
+
+    #angleChart {
+      width: 80%; 
+      max-width: 800px;
+    }
     </style>
   
   <body>
@@ -27,6 +33,7 @@
   <div class="container">
     <video class="input_video"></video>
     <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+    <canvas id="angleChart"></canvas> <!-- グラフ表示用のCanvas -->
     <div class="landmark-grid-container"></div>
   </div>
   <label><input type="checkbox" id="showimg" checked>show original image</label>
@@ -48,6 +55,47 @@
   const landmarkContainer = document.getElementsByClassName('landmark-grid-container')[0];
   const showimg = document.getElementById('showimg');
   const mirrormode = document.getElementById('mirrormode');
+
+  const angleData = []; // 角度データの配列
+  let frameCount = 0; // フレーム数を追跡するカウンタ
+  const displayedFrameCount = 101;
+
+
+  // グラフを初期化する関数
+  const ctx = document.getElementById('angleChart').getContext('2d');
+  const angleChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [], // 時間（フレーム）ラベル
+      datasets: [{
+        label: 'Arm Angle (Degrees)',
+        data: angleData,
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Frame'
+          }
+        },
+        y: {
+          min: 0,
+          max: 180,
+          title: {
+            display: true,
+            text: 'Angle (Degrees)'
+          }
+        }
+      }
+    }
+  });
 
     // 2つの直線のなす角度を計算する関数
   function calculateAngleBetweenLines(x1, x2, x3, y1, y2, y3) {
@@ -80,8 +128,17 @@
   });
 
   pose.onResults((results) => {
-    if (!results.poseLandmarks) return;
-
+    if (!results.poseLandmarks || results.poseLandmarks.length < 17) {
+    // 3つの関節が取得できていない場合、角度を0にする
+    angleData.push(0);
+    if (angleData.length > 50) {
+      angleData.shift();
+      angleChart.data.labels.shift();
+    }
+    angleChart.data.labels.push(angleData.length);
+    angleChart.update();
+    return; // 処理を終了
+  }
     const w = canvasElement.width;
     const h = canvasElement.height;
     canvasCtx.clearRect(0, 0, w, h);
@@ -137,7 +194,24 @@
     canvasCtx.font = '60px Arial'; // フォントサイズを大きく設定
     canvasCtx.fillStyle = 'white';
     canvasCtx.fillText(`Angle: ${Math.round(angleDeg)}°`, x2 + 20, y2 - 20);
+
+    // グラフに角度を追加
+    if (angleData.length > 100) {
+        angleData.shift(); // 古いデータを削除
+        angleChart.data.labels.shift();
+      }
+      angleData.push(angleDeg);
+      frameCount ++
+    // x軸のラベルを更新（102, 103, ... の形式）
+    if (frameCount > displayedFrameCount) {
+        angleChart.data.labels.push(frameCount + 1); // 1から始める
+    } else {
+        angleChart.data.labels.push(frameCount); // 1フレーム目からのラベルを保持
+    }      
+    angleChart.update();
   });
+
+  
 
   const camera = new Camera(videoElement, {
     onFrame: async () => {
