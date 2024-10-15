@@ -1,0 +1,158 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+  <title>MediaPipe - Pose</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="style.css">
+  </head>
+
+  <style>
+    .input_video {
+    display: none;
+    }
+    .output_canvas {
+    width: 100%;  /* コンテナ内でキャンバスをフィットさせる */
+    height: auto;  /* アスペクト比を保つ */
+    }
+
+    .landmark-grid-container {
+  display: none;  /* グリッド表示を無効化 */
+    }
+    </style>
+  
+  <body>
+  <h1>腕の角度を求める</h1>
+  <p>例えば、初心者とプロの間でbowingの制御がどのように違うかを研究しようとしています。</p>
+  <div class="container">
+    <video class="input_video"></video>
+    <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+    <div class="landmark-grid-container"></div>
+  </div>
+  <label><input type="checkbox" id="showimg" checked>show original image</label>
+  <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
+  <hr>
+  <footer>
+  <a href=./>demo index</a><br>
+  Reference: <a href="https://chuoling.github.io/mediapipe/solutions/pose.html">Pose Segmentation - mediapipe</a><br>
+  ご意見などありましたら、以下にご連絡いただけると嬉しいです。<br>
+  <a href="mailto:s-tsuji-1l9@eagle.sophia.ac.jp">s-tsuji-1l9@eagle.sophia.ac.jp</a>（辻慎也; 上智大学, 特別研究員）<br>
+  </footer>
+  
+  <script type="module">
+  import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+
+  const videoElement = document.getElementsByClassName('input_video')[0];
+  const canvasElement = document.getElementsByClassName('output_canvas')[0];
+  const canvasCtx = canvasElement.getContext('2d');
+  const landmarkContainer = document.getElementsByClassName('landmark-grid-container')[0];
+  const showimg = document.getElementById('showimg');
+  const mirrormode = document.getElementById('mirrormode');
+
+    // 2つの直線のなす角度を計算する関数
+  function calculateAngleBetweenLines(x1, x2, x3, y1, y2, y3) {
+    const a1 = (y2 - y1) / (x2 - x1); // 直線1の傾き
+    const a2 = (y3 - y2) / (x3 - x2); // 直線2の傾き
+    const angleRad = Math.atan((a2 - a1) / (1 + a1 * a2)); // ラジアンでの角度
+    let angleDeg = angleRad * (180 / Math.PI); // 度に変換
+
+    // 0-180度範囲の変換
+    if (y3 < y1) {
+      angleDeg = Math.abs(angleDeg < 0 ? angleDeg : angleDeg - 180);
+    } else {
+      angleDeg = Math.abs(angleDeg < 0 ? angleDeg + 180 : angleDeg);
+    }
+    return angleDeg;
+  }
+
+
+  const pose = new Pose({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+  });
+
+  pose.setOptions({
+    modelComplexity: 1,
+    smoothLandmarks: true,
+    enableSegmentation: false,
+    smoothSegmentation: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+
+  pose.onResults((results) => {
+    if (!results.poseLandmarks) return;
+
+    const w = canvasElement.width;
+    const h = canvasElement.height;
+    canvasCtx.clearRect(0, 0, w, h);
+
+    if (mirrormode.checked) {
+      canvasCtx.scale(-1, 1);
+      canvasCtx.translate(-w, 0);
+    }
+
+    if (showimg.checked) {
+      canvasCtx.drawImage(results.image, 0, 0, w, h);
+    }
+
+    // ランドマークの取得
+    const lm12 = results.poseLandmarks[12]; // Shoulder
+    const lm14 = results.poseLandmarks[14]; // Elbow
+    const lm16 = results.poseLandmarks[16]; // Wrist
+
+    // ピクセル座標に変換
+    const [x1, y1] = [lm12.x * w, lm12.y * h];
+    const [x2, y2] = [lm14.x * w, lm14.y * h];
+    const [x3, y3] = [lm16.x * w, lm16.y * h];
+
+    // 角度の計算
+    const angleDeg = calculateAngleBetweenLines(x1, x2, x3, y1, y2, y3);
+
+    // ランドマークと角度の描画
+    canvasCtx.fillStyle = 'red';
+    canvasCtx.beginPath();
+    canvasCtx.arc(x1, y1, 5, 0, 2 * Math.PI);
+    canvasCtx.fill();
+
+    canvasCtx.fillStyle = 'green';
+    canvasCtx.beginPath();
+    canvasCtx.arc(x2, y2, 5, 0, 2 * Math.PI);
+    canvasCtx.fill();
+
+    canvasCtx.fillStyle = 'blue';
+    canvasCtx.beginPath();
+    canvasCtx.arc(x3, y3, 5, 0, 2 * Math.PI);
+    canvasCtx.fill();
+
+    // 関節を結ぶ線の描画
+    canvasCtx.strokeStyle = 'yellow';
+    canvasCtx.lineWidth = 4;
+    canvasCtx.beginPath();
+    canvasCtx.moveTo(x1, y1); // 肩から
+    canvasCtx.lineTo(x2, y2); // 肘まで
+    canvasCtx.lineTo(x3, y3); // 手首まで
+    canvasCtx.stroke();
+
+    // 角度の表示
+    canvasCtx.font = '60px Arial'; // フォントサイズを大きく設定
+    canvasCtx.fillStyle = 'white';
+    canvasCtx.fillText(`Angle: ${Math.round(angleDeg)}°`, x2 + 20, y2 - 20);
+  });
+
+  const camera = new Camera(videoElement, {
+    onFrame: async () => {
+      const dpi = devicePixelRatio;
+      canvasElement.width = videoElement.videoWidth * dpi;
+      canvasElement.height = videoElement.videoHeight * dpi;
+      await pose.send({ image: videoElement });
+    },
+    width: 1280,
+    height: 720,
+  });
+
+  camera.start();
+</script>
+
+  
+  </body>
+  </html>
