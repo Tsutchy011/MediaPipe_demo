@@ -7,40 +7,48 @@
 <link rel="stylesheet" href="style.css">
 </head>
 
+<style>
+.input_video {
+  display: none;
+}
+</style>
+
 <body>
 <h1>手の動きの分析</h1>
 <p>ピアノを弾くヒトの指先の分析への応用を考えています</p>
 <div class="container">
-  <video id="videoElement" playsinline></video>
-  <canvas id="canvasElement"></canvas>
+  <video class="input_video"></video>
+  <canvas class="output_canvas" width="1280px" height="720px"></canvas>
 </div>
+<label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
 <hr>
 <footer>
 <a href=./>demo index</a><br>
-lib: <a href="https://chuoling.github.io/mediapipe/solutions/hands.html">Hands - mediapipe</a><br>
+Contact: ご意見などありましたら、以下にご連絡ください。<br>
+s-tsuji-1l9@eagle.sophia.ac.jp<br>
+Reference: <a href="https://chuoling.github.io/mediapipe/solutions/hands.html">Hands - mediapipe</a><br>
 </footer>
 
 <script type="module">
 import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
 
-const videoElement = document.getElementById('videoElement');
-const canvasElement = document.getElementById('canvasElement');
-  
+const videoElement = document.getElementsByClassName('input_video')[0];
+const canvasElement = document.getElementsByClassName('output_canvas')[0];
 const canvasCtx = canvasElement.getContext('2d');
 
-const hands = new Hands({ locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}` });
-
-hands.setOptions({
-  maxNumHands: 10,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5,
-});
-hands.onResults(results) => {
+function onResults(results) {
+  const w = canvasElement.width;
   canvasCtx.save();
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+
+  if (mirrormode.checked) {
+    canvasCtx.scale(-1, 1);
+    canvasCtx.translate(-w, 0);
+  }
+
   canvasCtx.drawImage(
       results.image, 0, 0, canvasElement.width, canvasElement.height);
+
   if (results.multiHandLandmarks) {
     for (const landmarks of results.multiHandLandmarks) {
       drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
@@ -50,6 +58,18 @@ hands.onResults(results) => {
   }
   canvasCtx.restore();
 }
+
+const hands = new Hands({locateFile: (file) => {
+  return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+}}); 
+hands.setOptions({
+  maxNumHands: 2,
+  modelComplexity: 1,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
+});
+hands.onResults(onResults);
+
 
 const camera = new Camera(videoElement, {
   onFrame: async () => {
