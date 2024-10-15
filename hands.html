@@ -1,88 +1,93 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>MediaPipe - Hands</title>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="style.css">
-</head>
-
-<style>
-.input_video {
-  display: none;
-}
-</style>
-
-<body>
-<h1>手の動きの分析</h1>
-<p>ピアノを弾くヒトの指先の分析への応用を考えています</p>
-<div class="container">
-  <video class="input_video"></video>
-  <canvas class="output_canvas" width="1280px" height="720px"></canvas>
-</div>
-<label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
-<hr>
-<footer>
-<a href=./>demo index</a><br>
-Reference: <a href="https://chuoling.github.io/mediapipe/solutions/hands.html">Hands - mediapipe</a><br>
-ご意見などありましたら、以下にご連絡いただけると嬉しいです。<br>
-<a href="mailto:s-tsuji-1l9@eagle.sophia.ac.jp">s-tsuji-1l9@eagle.sophia.ac.jp</a>（辻慎也; 上智大学, 特別研究員）<br>
-</footer>
-
-<script type="module">
-import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
-
-const videoElement = document.getElementsByClassName('input_video')[0];
-const canvasElement = document.getElementsByClassName('output_canvas')[0];
-const canvasCtx = canvasElement.getContext('2d');
-
-function onResults(results) {
-  const w = canvasElement.width;
-  canvasCtx.save();
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-
-  if (mirrormode.checked) {
-    canvasCtx.scale(-1, 1);
-    canvasCtx.translate(-w, 0);
+  <title>MediaPipe - Hands</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="style.css">
+  </head>
+  
+  <style>
+  .input_video {
+    display: none;
   }
+  </style>
+  
+  <body>
+  <h1>手の動きの分析</h1>
+  <p>ピアノを弾くヒトの指先の分析への応用を考えています</p>
+  <div class="container">
+    <video class="input_video"></video>
+    <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+  </div>
+  <label><input type="checkbox" id="showimg" checked>show original image</label>
+  <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
+  <hr>
+  <footer>
+  <a href=./>demo index</a><br>
+  Reference: <a href="https://chuoling.github.io/mediapipe/solutions/hands.html">Hands - mediapipe</a><br>
+  ご意見などありましたら、以下にご連絡いただけると嬉しいです。<br>
+  <a href="mailto:s-tsuji-1l9@eagle.sophia.ac.jp">s-tsuji-1l9@eagle.sophia.ac.jp</a>（辻慎也; 上智大学, 特別研究員）<br>
+  </footer>
+  
+  <script type="module">
+  import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+  
+  const videoElement = document.getElementsByClassName('input_video')[0];
+  const canvasElement = document.getElementsByClassName('output_canvas')[0];
+  const canvasCtx = canvasElement.getContext('2d');
+  
+  function onResults(results) {
+    const w = canvasElement.width;
+    const h = canvasElement.height;
 
-  canvasCtx.drawImage(
-      results.image, 0, 0, canvasElement.width, canvasElement.height);
-
-  if (results.multiHandLandmarks) {
-    for (const landmarks of results.multiHandLandmarks) {
-      drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
-                     {color: '#00FF00', lineWidth: 5});
-      drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+  
+    if (mirrormode.checked) {
+      canvasCtx.scale(-1, 1);
+      canvasCtx.translate(-w, 0);
     }
+  
+    if (showimg.checked) {
+    canvasCtx.drawImage(
+        results.image, 0, 0, canvasElement.width, canvasElement.height);
+    }
+  
+    if (results.multiHandLandmarks) {
+      for (const landmarks of results.multiHandLandmarks) {
+        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                       {color: '#00FF00', lineWidth: 5});
+        drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+      }
+    }
+    canvasCtx.restore();
   }
-  canvasCtx.restore();
-}
-
-const hands = new Hands({locateFile: (file) => {
-  return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
-}}); 
-hands.setOptions({
-  maxNumHands: 2,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5
-});
-hands.onResults(onResults);
-
-
-const camera = new Camera(videoElement, {
-  onFrame: async () => {
-    const dpi = devicePixelRatio;
-    canvasElement.width = videoElement.videoWidth * dpi;
-    canvasElement.height = videoElement.videoHeight * dpi;
-    await hands.send({ image: videoElement });
-  },
-  width: 1280,
-  height: 720,
-});
-camera.start();
-</script>
-
-</body>
-</html>
+  
+  const hands = new Hands({locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+  }}); 
+  hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+  hands.onResults(onResults);
+  
+  
+  const camera = new Camera(videoElement, {
+    onFrame: async () => {
+      const dpi = devicePixelRatio;
+      canvasElement.width = videoElement.videoWidth * dpi;
+      canvasElement.height = videoElement.videoHeight * dpi;
+      await hands.send({ image: videoElement });
+    },
+    width: 1280,
+    height: 720,
+  });
+  camera.start();
+  </script>
+  
+  </body>
+  </html>
