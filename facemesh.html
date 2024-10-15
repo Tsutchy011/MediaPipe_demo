@@ -20,11 +20,12 @@
   <video id="videoElement" playsinline></video>
   <canvas id="canvasElement"></canvas>
 </div>
+<label><input type="checkbox" id="showimg" checked>show original image</label>
 <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
 <hr>
 <footer>
 <a href=./>demo index</a><br>
-lib: <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Face Mesh - mediapipe</a><br>
+Reference: <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Face Mesh - mediapipe</a><br>
 ご意見などありましたら、以下にご連絡いただけると嬉しいです。<br>
 <a href="mailto:s-tsuji-1l9@eagle.sophia.ac.jp">s-tsuji-1l9@eagle.sophia.ac.jp</a>（辻慎也; 上智大学, 特別研究員）<br>
 </footer>
@@ -39,6 +40,7 @@ const canvasCtx = canvasElement.getContext('2d');
 
 function onResults(results) {
   const w = canvasElement.width;
+  const h = canvasElement.height;
   canvasCtx.save(); // 描画状態の保存
   canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
 
@@ -47,7 +49,9 @@ function onResults(results) {
     canvasCtx.translate(-w, 0);
   }
 
+  if (showimg.checked) {
   canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+  }
 
   if (results.multiFaceLandmarks) {
     for (const landmarks of results.multiFaceLandmarks) {
