@@ -11,6 +11,11 @@
   .input_video {
     display: none;
   }
+
+  .output_canvas {
+  width: 100%;  /* コンテナ内でキャンバスをフィットさせる */
+  height: auto;  /* アスペクト比を保つ */
+  }
   </style>
   
   <body>
@@ -18,7 +23,7 @@
   <p>ピアノを弾くヒトの指先の分析への応用を考えています</p>
   <div class="container">
     <video class="input_video"></video>
-    <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+    <canvas class="output_canvas"></canvas>
   </div>
   <label><input type="checkbox" id="showimg" checked>show original image</label>
   <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
