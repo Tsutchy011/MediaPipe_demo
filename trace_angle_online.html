@@ -190,10 +190,18 @@
     canvasCtx.lineTo(x3, y3); // 手首まで
     canvasCtx.stroke();
 
+    if (mirrormode.checked) {
+            canvasCtx.save(); // 現在の状態を保存
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-w, 0);
+            }
+
     // 角度の表示
     canvasCtx.font = '60px Arial'; // フォントサイズを大きく設定
-    canvasCtx.fillStyle = 'white';
-    canvasCtx.fillText(`Angle: ${Math.round(angleDeg)}°`, x2 + 20, y2 - 20);
+    canvasCtx.fillStyle = 'orange';
+
+    const textX = mirrormode.checked ? w - (x2 -20) : x2 - 20;
+    canvasCtx.fillText(`Angle: ${Math.round(angleDeg)}°`, textX, y2 - 20);
 
     // グラフに角度を追加
     if (angleData.length > 100) {
