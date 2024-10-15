@@ -1,68 +1,125 @@
 <!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
-<title>MediaPipe - Pose</title>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
-<link rel="stylesheet" href="style.css">
-</head>
+  <title>MediaPipe - Pose</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils_3d/control_utils_3d.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <link rel="stylesheet" href="style.css">
+  </head>
 
-<body>
-<h1>姿勢の分析</h1>
-<p>バイオリンなどの楽器を弾くヒトの身体の制御の分析への応用を考えています</p>
-<div class="container">
-  <video id="videoElement" playsinline></video>
-  <canvas id="canvasElement"></canvas>
-</div>
-<hr>
-<footer>
-<a href=./>demo index</a><br>
-lib: <a href="https://chuoling.github.io/mediapipe/solutions/pose.html">Pose Segmentation - mediapipe</a><br>
-</footer>
+  <style>
+    .input_video {
+    display: none;
+    }
+    .output_canvas {
+    width: 100%;  /* コンテナ内でキャンバスをフィットさせる */
+    height: auto;  /* アスペクト比を保つ */
+    }
 
-<script type="module">
-import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+    .landmark-grid-container {
+  display: none;  /* グリッド表示を無効化 */
+    }
+    </style>
+  
+  <body>
+  <h1>姿勢の分析</h1>
+  <p>バイオリンなどの楽器を弾くヒトの身体の制御の分析への応用を考えています</p>
+  <div class="container">
+    <video class="input_video"></video>
+    <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+    <div class="landmark-grid-container"></div>
+  </div>
+  <label><input type="checkbox" id="showimg" checked>show original image</label>
+  <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
+  <hr>
+  <footer>
+  <a href=./>demo index</a><br>
+  Reference: <a href="https://chuoling.github.io/mediapipe/solutions/pose.html">Pose Segmentation - mediapipe</a><br>
+  ご意見などありましたら、以下にご連絡いただけると嬉しいです。<br>
+  <a href="mailto:s-tsuji-1l9@eagle.sophia.ac.jp">s-tsuji-1l9@eagle.sophia.ac.jp</a>（辻慎也; 上智大学, 特別研究員）<br>
+  </footer>
+  
+  <script type="module">
+  import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
 
+  const videoElement = document.getElementsByClassName('input_video')[0];
+  const canvasElement = document.getElementsByClassName('output_canvas')[0];
+  const canvasCtx = canvasElement.getContext('2d');
+  const landmarkContainer = document.getElementsByClassName('landmark-grid-container')[0];
+  const grid = new LandmarkGrid(landmarkContainer);
+  const showimg = document.getElementById('showimg');
+  const mirrormode = document.getElementById('mirrormode');
 
-const videoElement = document.getElementById('videoElement');
-const canvasElement = document.getElementById('canvasElement');
-const canvasCtx = canvasElement.getContext('2d');
+  function onResults(results) {
+    if (!results.poseLandmarks) {
+      grid.updateLandmarks([]);
+      return;
+    }
 
-function onResults(results) {
-  canvasCtx.save();
-  canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
-  canvasCtx.drawImage(
-      results.image, 0, 0, canvasElement.width, canvasElement.height);
-  drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS,
-                 {color: '#00FF00', lineWidth: 4});
-  drawLandmarks(canvasCtx, results.poseLandmarks,
-                {color: '#FF0000', lineWidth: 2});
-  canvasCtx.restore();
-}
+    const w = canvasElement.width;
+    const h = canvasElement.height;
 
-const pose = new Pose({locateFile: (file) => {
-  return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
-}});
-pose.setOptions({
-  upperBodyOnly: false,
-  smoothLandmarks: true,
-  minDetectionConfidence: 0.5,
-  minTrackingConfidence: 0.5
-});
-pose.onResults(onResults);
+    canvasCtx.save();
+    canvasCtx.clearRect(0, 0, w, h);
 
-const camera = new Camera(videoElement, {
-  onFrame: async () => {
-    const dpi = devicePixelRatio;
-    canvasElement.width = videoElement.videoWidth * dpi;
-    canvasElement.height = videoElement.videoHeight * dpi;
-    await pose.send({ image: videoElement });
-  },
-  width: 1280,
-  height: 720,
-});
-camera.start();
+    if (mirrormode.checked) {
+      canvasCtx.scale(-1, 1);
+      canvasCtx.translate(-w, 0);
+    }
+
+    canvasCtx.globalCompositeOperation = 'source-in';
+    canvasCtx.fillStyle = '#00FF00';
+    canvasCtx.fillRect(0, 0, w, h);
+
+    canvasCtx.globalCompositeOperation = 'destination-atop';
+    if (showimg.checked) {
+    canvasCtx.drawImage(results.image, 0, 0, w, h);
+    }
+
+    canvasCtx.globalCompositeOperation = 'source-over';
+    drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {
+      color: '#00FF00',
+      lineWidth: 4,
+    });
+    drawLandmarks(canvasCtx, results.poseLandmarks, {
+      color: '#FF0000',
+      lineWidth: 2,
+    });
+
+    canvasCtx.restore();
+    grid.updateLandmarks(results.poseWorldLandmarks);
+  }
+
+  const pose = new Pose({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+  });
+
+  pose.setOptions({
+    modelComplexity: 1,
+    smoothLandmarks: true,
+    enableSegmentation: false,
+    smoothSegmentation: true,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5,
+  });
+
+  pose.onResults(onResults);
+
+  const camera = new Camera(videoElement, {
+    onFrame: async () => {
+      const dpi = devicePixelRatio;
+      canvasElement.width = videoElement.videoWidth * dpi;
+      canvasElement.height = videoElement.videoHeight * dpi;
+      await pose.send({ image: videoElement });
+    },
+    width: 1280,
+    height: 720,
+  });
+
+  camera.start();
 </script>
 
-</body>
-</html>
+  
+  </body>
+  </html>
