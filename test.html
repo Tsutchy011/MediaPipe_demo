@@ -1,0 +1,232 @@
+<!DOCTYPE html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width">
+  <title>MediaPipe - FaceMesh</title>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.jsの追加 -->
+  <script src="https://cdn.jsdelivr.net/gh/mattdiamond/Recorderjs/recorder.js"></script>
+
+  <link rel="stylesheet" href="style.css">
+  </head>
+    
+  
+  <body>
+  <h1>ボイストレーニング補助アプリのテスト</h1>
+  <p>以下では、録音機能とその時の音のスペクトルの可視化などをテストしています:</p>
+  
+
+    <div id="recorder"> 
+        <button id="startAudio">Start</button>
+        <button id="stopAudio">Stop</button>
+        <button id="downloadAudio" style="display:none;">ダウンロード</button>
+
+        <p></p>
+
+        <audio id="audio" controls></audio>
+        <script type="text/javascript" src="voice_recorder.js"></script>
+    </div>
+
+
+    <div id="spectrumContainer" style="display: none;"></div>
+    <!-- p5.js がこの中に canvas を挿入します -->
+    </div>
+    
+
+
+
+
+  <hr>
+  <footer>
+  <a href=./>demo index</a><br>
+  Reference: <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Face Mesh - mediapipe</a><br>
+  ご意見などありましたら、以下にご連絡いただけると嬉しいです。<br>
+  <a href="mailto:s-tsuji-1l9@eagle.sophia.ac.jp">s-tsuji-1l9@eagle.sophia.ac.jp</a>（辻慎也; 上智大学, 特別研究員）<br>
+  </footer>
+
+
+
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js" integrity="sha512-WIklPM6qPCIp6d3fSSr90j+1unQHUOoWDS4sdTiR8gxUTnyZ8S2Mr8e10sKKJ/bhJgpAa/qG068RDkg6fIlNFA==" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js" integrity="sha512-wM+t5MzLiNHl2fwT5rWSXr2JMeymTtixiw2lWyVk1JK/jDM4RBSFoH4J8LjucwlDdY6Mu84Kj0gPXp7rLGaDyA==" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="spectrum_vidualizer.js"></script>
+
+  
+  <script type="module">
+  import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+
+  const videoElement = document.getElementsByClassName('input_video')[0];
+  const canvasElement = document.getElementsByClassName('output_canvas')[0];
+  const canvasCtx = canvasElement.getContext('2d');
+
+  const showimg = document.getElementById('showimg');
+  const mirrormode = document.getElementById('mirrormode');
+
+  const distanceData = []; // 角度データの配列
+  let frameCount = 0; // フレーム数を追跡するカウンタ
+  const displayedFrameCount = 101;
+
+
+
+  // グラフを初期化する関数
+  const ctx = document.getElementById('distanceChart').getContext('2d');
+  const distanceChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [], // 時間（フレーム）ラベル
+      datasets: [{
+        label: 'Mouth Distance (Pixels)',
+        data: distanceData,
+        borderColor: 'rgba(75, 192, 192, 1)',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Frame'
+          }
+        },
+        y: {
+          min: 0,
+          max: 300,
+          title: {
+            display: true,
+            text: 'Distance (Pixels)'
+          }
+        }
+      }
+    }
+  });
+
+    // 2つの座標の距離を計算する関数
+  function calculateDistanceBetweenLips(x1, x2, y1, y2) {
+    const d1 = Math.pow(x1 - x2, 2); // x1, 2の距離
+    const d2 = Math.pow(y1 - y2, 2); // y1, 2の距離
+    let distancePix = Math.round(Math.sqrt(d1 + d2));
+
+    return distancePix;
+  }
+
+
+  const faceMesh = new FaceMesh({locateFile: (file) => {
+  return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+  }});
+
+  faceMesh.setOptions({
+    maxNumFaces: 1,
+    minDetectionConfidence: 0.5,
+    minTrackingConfidence: 0.5
+  });
+
+  faceMesh.onResults((results) => {
+    console.log(results); // 追加: resultsの内容を確認
+
+    const w = canvasElement.width;
+    const h = canvasElement.height;
+    canvasCtx.clearRect(0, 0, w, h);
+
+    if (mirrormode.checked) {
+      canvasCtx.scale(-1, 1);
+      canvasCtx.translate(-w, 0);
+    }
+
+    if (showimg.checked) {
+      canvasCtx.drawImage(results.image, 0, 0, w, h);
+    }
+
+            // ランドマークの取得
+        if (results.multiFaceLandmarks.length > 0) {
+            const lm0 = results.multiFaceLandmarks[0][13]; // Upper lip
+            const lm17 = results.multiFaceLandmarks[0][14]; // Lower lip
+
+            // ピクセル座標に変換
+            const [x1, y1] = [lm0.x * w, lm0.y * h];
+            const [x2, y2] = [lm17.x * w, lm17.y * h];
+
+            // 角度の計算
+            const distancePix = calculateDistanceBetweenLips(x1, x2, y1, y2);
+
+            // ランドマークと角度の描画
+            canvasCtx.fillStyle = 'red';
+            canvasCtx.beginPath();
+            canvasCtx.arc(x1, y1, 5, 0, Math.PI * 2);
+            canvasCtx.fill();
+
+            canvasCtx.fillStyle = 'green';
+            canvasCtx.beginPath();
+            canvasCtx.arc(x2, y2, 5, 0, Math.PI * 2);
+            canvasCtx.fill();
+
+            // 関節を結ぶ線の描画
+            canvasCtx.strokeStyle = 'yellow';
+            canvasCtx.lineWidth = 4;
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(x1, y1);
+            canvasCtx.lineTo(x2, y2);
+            canvasCtx.stroke();
+
+            if (mirrormode.checked) {
+            canvasCtx.save(); // 現在の状態を保存
+            canvasCtx.scale(-1, 1);
+            canvasCtx.translate(-w, 0);
+            }
+
+            // 距離の表示
+            canvasCtx.font = '90px Arial'; // フォントサイズを大きく設定
+            canvasCtx.fillStyle = 'orange';
+
+            // ミラーモードの時にテキストのx座標を調整
+            const textX = mirrormode.checked ? w - (x2 -20) : x2 - 20;
+            canvasCtx.fillText(`Distance: ${Math.round(distancePix)} [px]`, textX, y2 - 20);
+
+            // スケーリングを元に戻す
+            if (mirrormode.checked) {
+              canvasCtx.restore(); // 保存した状態を復元
+            }
+
+            // グラフに距離を追加
+            if (distanceData.length > 100) {
+                distanceData.shift(); // 古いデータを削除
+                distanceChart.data.labels.shift();
+            }
+            distanceData.push(distancePix);
+            frameCount++;
+            // x軸のラベルを更新（102, 103, ... の形式）
+            if (frameCount > displayedFrameCount) {
+                distanceChart.data.labels.push(frameCount + 1); // 1から始める
+            } else {
+                distanceChart.data.labels.push(frameCount); // 1フレーム目からのラベルを保持
+            }
+            distanceChart.update();
+        } else {
+            // ランドマークが取得できなかった場合は、元の映像をそのまま描画
+            canvasCtx.drawImage(results.image, 0, 0, w, h);
+        }
+    });
+
+  
+
+  const camera = new Camera(videoElement, {
+    onFrame: async () => {
+      const dpi = devicePixelRatio;
+      canvasElement.width = videoElement.videoWidth * dpi;
+      canvasElement.height = videoElement.videoHeight * dpi;
+      await faceMesh.send({ image: videoElement });
+    },
+    width: 1280,
+    height: 720,
+  });
+
+  camera.start();
+</script>
+
+
+  
+  </body>
+  </html>
