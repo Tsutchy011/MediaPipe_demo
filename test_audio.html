@@ -17,19 +17,27 @@
   
 
     <div id="recorder"> 
-        <button id="startAudio">Start</button>
-        <button id="stopAudio">Stop</button>
-        <button id="downloadAudio" style="display:none;">ダウンロード</button>
 
-        <p></p>
+      <div class="button-area">
+          <button class = "recorder-button" id="recordToggleBtn">▶ 開始</button>
+            <div class="recording-status" id="recorder">
+              <p></p>
+            </div>
+      </div>
 
-        <audio id="audio" controls></audio>
-        <script type="text/javascript" src="voice_recorder.js"></script>
-    </div>
+      <div class="spectrum-plot" id="spectrumContainer">
+      <!-- p5.js がこの中に canvas を挿入します -->
+      </div>
 
 
-    <div id="spectrumContainer" style="display: none;"></div>
-    <!-- p5.js がこの中に canvas を挿入します -->
+        <div id="recordingsList"></div>
+
+      <div class="audio-player">
+        <audio id="audio" controls style="display: none;"></audio>
+      </div>
+        
+
+
     </div>
     
 
@@ -45,11 +53,9 @@
   </footer>
 
 
-
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js" integrity="sha512-WIklPM6qPCIp6d3fSSr90j+1unQHUOoWDS4sdTiR8gxUTnyZ8S2Mr8e10sKKJ/bhJgpAa/qG068RDkg6fIlNFA==" crossorigin="anonymous"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js" integrity="sha512-wM+t5MzLiNHl2fwT5rWSXr2JMeymTtixiw2lWyVk1JK/jDM4RBSFoH4J8LjucwlDdY6Mu84Kj0gPXp7rLGaDyA==" crossorigin="anonymous"></script>
-  <script type="text/javascript" src="spectrum_vidualizer.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/p5.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.1.9/addons/p5.sound.min.js"></script>
+  <script type="text/javascript" src="voice_recorder.js"></script>
 
   
   <script type="module">
