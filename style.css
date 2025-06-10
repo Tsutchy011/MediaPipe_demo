@@ -13,3 +13,120 @@ body {
 footer {
   margin: .5em;
 }
+
+.input_video {
+    display: none;
+}
+
+.output_canvas {
+    width: 100%;  /* コンテナ内でキャンバスをフィットさせる */
+    height: auto;  /* アスペクト比を保つ */
+}
+
+#angleChart {
+      width: 80%; 
+      max-width: 800px;
+    }
+
+* {box-sizing: border-box;
+    padding: 0;
+    margin: 0;
+    }
+
+    canvas {
+    width: 80%; 
+    max-width: 800px; 
+    margin-left: 20px;
+    border: 1px solid black;
+    }
+
+ 
+
+
+.camera-button {
+  box-shadow: 0 5px 0 #000000; 
+  border-radius: 50vh; 
+  padding: 1em 2em 0.8em; 
+  line-height:1; 
+  display: inline-block;
+  border: none;
+  font-size: 16px;
+  color: white;
+  background-color: green;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.button-area {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  text-align: center;
+  
+}
+
+.camera-button.playing {
+  background-color: red;
+}
+
+.camera-button:hover {
+  transform: scale(1.05);
+}
+
+.recorder-button {
+  box-shadow: 0 5px 0 #000000; 
+  border-radius: 50vh; 
+  padding: 1em 2em 0.8em; 
+  line-height:1; 
+  display: inline-block;
+  border: none;
+  font-size: 16px;
+  color: white;
+  background-color: green;
+  cursor: pointer;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+.recorder.playing {
+  background-color: red;
+}
+
+.recorder:hover {
+  transform: scale(1.05);
+}
+
+.recording-status {
+  margin-top: 10px;
+}
+
+.audio-player {
+  display: flex;
+  justify-content: center;
+  align-items: center; /* 垂直中央寄せしたい場合 */
+  width: 100%; /* 中央揃えに必要 */
+}
+
+audio {
+  width: 80%;
+  max-width: 400px;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin: 10px 0;
+}
+
+#spectrumContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  width: 100%;
+  box-sizing: border-box;
+  overflow-x: auto; /* 横スクロール許可（必要なら） */
+}
+
+canvas {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
