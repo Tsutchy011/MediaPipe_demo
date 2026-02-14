@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="jpn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>辻慎也 | ピアニスト・研究者 | Shinya Tsuji ホームページ</title>
+    <meta name="description"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../assets/css/sanitize.css">
+    <link rel="stylesheet" href="../../assets/css/style.css">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+    <link rel="icon" type="image/png" href="../../assets/images/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../assets/images/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../../assets/images/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../assets/images/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！" />
+    <link rel="manifest" href="../../assets/images/favicon/site.webmanifest" />
+    <script src="https://unpkg.com/budoux/bundle/budoux-ja.min.js"></script>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1 class="header-logo">
+            <a href="../../index.html">
+                S. Tsuji Official
+            </a>
+        </h1>
+
+        <!-- ハンバーガーメニューアイコン -->
+        <div class="menu-icon" onclick="toggleMenu()">
+            ☰
+        </div>
+
+        <nav class="header-nav">
+            <ul class="header-list">
+                <li class="header-text"><a href="../../index.html">Home</a></li>
+                <li class="header-text"><a href="../../index/biography.html">Biography</a></li>
+                <li class="header-text"><a href="../../index/publications.html">Publications</a></li>
+                <li class="header-text"><a href="../../index/demo.html">Demo</a></li>
+                <li class="header-text"><a href="../../index/link.html">Link</a></li>
+                <li class="header-text"><a href="../../index/contact.html">Contact</a></li>
+            </ul>
+        </nav>
+
+
+    </header>
+
+    <!-- パンくずリスト -->
+    <div id="breadcrumb_area">
+        <ul class="bread" id="breadcrumb_list">
+            <li><a href="../../index.html">Home</a></li>
+            <li><a href="../../index/demo.html">Demo</a></li>
+            <li><a href="../../index/Demo/MediaPipe_demo_top.html">MediaPipe top</a></li>
+        </ul>
+    </div>
+
+    <section class="section-article">
+        <h1 class="title">
+            MediaPipe Demo
+        </h1>
+
+
+        <div class="article-div">
+            <budoux-ja>
+                <p class="article-body">
+                    以下を開くと、演奏する身体の動作に関わる研究のデモンストレーションをご覧になれます:
+                </p>
+
+                <h3 class="list-head">
+                    - 身体の動作測定のデモ
+                </h3>
+
+                <ul class="demo-body">
+                    <li class="demo-list">
+                        ・<a class="demo-link" href="MediaPipe/MediaPipe_facemesh.html">
+                            顔の動きのキャプチャ</a>
+                        <div class="demo-eng">
+                            - Estimating the face landmarks
+                        </div>
+                    </li>
+
+                    <li class="demo-list">
+                        ・<a class="demo-link" href="MediaPipe/MediaPipe_hands.html">
+                            手の動きのキャプチャ</a>
+                        <div class="demo-eng">
+                            - Estimating the hand landmarks
+                        </div>
+                    </li>
+
+                    <li class="demo-list">
+                        ・<a class="demo-link" href="MediaPipe/MediaPipe_pose.html">
+                            身体の動きのキャプチャ</a>
+                        <div class="demo-eng">
+                            - Estimating the pose landmarks
+                        </div>
+                    </li>
+                </ul>
+
+                <h3 class="list-head">
+                    - 研究への応用例
+                </h3>
+
+                <ul class="demo-body">
+                    <li class="demo-list">
+                        ・<a class="demo-link" href="MediaPipe/MediaPipe_face_trace_online.html">
+                            口の開口度合いを求める</a>
+                        <div class="demo-eng">
+                            - Calculating the degree of mouth opening from estimated face landmarks
+                        </div>
+                    </li>
+
+                    <li class="demo-list">
+                        ・<a class="demo-link" href="MediaPipe/MediaPipe_fingerVelocity_trace_online.html">
+                            指先の速さを求める</a>
+                        <div class="demo-eng">
+                            - Calculating the velocity of fingertips from estimated hand landmarks
+                        </div>
+                    </li>
+
+                    <li class="demo-list">
+                        ・<a class="demo-link" href="MediaPipe/MediaPipe_angle_trace_online.html">
+                            腕の角度を求める</a>
+                        <div class="demo-eng">
+                            - Calculating the angle of elbow from estimated pose landmarks
+                        </div>
+                    </li>
+
+                </ul>
+
+                <ul class="reference-body">
+                    <b>[Reference]</b> <br>
+                    <li class="reference-list">
+                        <a href="https://chuoling.github.io/mediapipe/">MediaPipe</a>
+                    </li>
+                </ul>
+
+
+            </budoux-ja>
+        </div>
+
+
+    </section>
+
+    <footer class="footer">
+        <ul>
+            <li class="footer-list"><a href="../../index/biography.html">経歴</a></li>
+            <li class="footer-list"><a href="../../index/demo.html">過去の演奏</a></li>
+            <li class="footer-list"><a href="../../index/publications.html">研究の業績</a></li>
+            <li class="footer-list"><a href="../../index/link.html">リンク</a></li>
+            <li class="footer-list"><a href="../../index/contact.html">お問い合わせ</a></li>
+        </ul>
+
+        <div class="footer-sns">
+            <a
+                href="https://twitter.com/Tsutchy011?ref_src=twsrc%5Etfw%7Ctwcamp%5Eembeddedtimeline%7Ctwterm%5Escreen-name%3ATsutchy011%7Ctwcon%5Es2">
+                <img class="footer-icon" src="../../assets/images/Twitter_social_icons_circle_blue.png" alt="Twitter">
+            </a>
+            <a href="https://www.facebook.com/profile.php?id=100002934045529">
+                <img class="footer-icon" src="../../assets/images/f_logo_RGB-Blue_250.png" alt="Facebook">
+            </a>
+            <a href="https://mastodon.social/@shintyan011">
+                <img class="footer-icon" src="../../assets/images/mastodon.svg" alt="Mastodon">
+            </a>
+        </div>
+
+        <p>Copyright © 2022–<span id="currentYear"></span> Shinya Tsuji Official Website</p>
+    </footer>
+
+    <script src="../../assets/js/toggleMenu.js"></script>
+    <script src="../../assets/js/header.js"> </script>
+
+    <script>
+        document.getElementById("currentYear").textContent = new Date().getFullYear();
+    </script>
+</body>
+
+</html>

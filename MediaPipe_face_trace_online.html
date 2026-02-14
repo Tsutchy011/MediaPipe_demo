@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="jpn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>辻慎也 | ピアニスト・研究者 | Shinya Tsuji ホームページ</title>
+    <meta name="description"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../../assets/css/sanitize.css">
+    <link rel="stylesheet" href="../../../assets/css/style.css">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+    <link rel="icon" type="image/png" href="../../../assets/images/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../../assets/images/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../../../assets/images/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/images/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！" />
+    <link rel="manifest" href="../../../assets/images/favicon/site.webmanifest" />
+    <script src="https://unpkg.com/budoux/bundle/budoux-ja.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script> <!-- Chart.jsの追加 -->
+</head>
+
+<body>
+
+    <header class="header">
+        <h1 class="header-logo">
+            <a href="../../../index.html">
+                S. Tsuji Official
+            </a>
+        </h1>
+
+        <!-- ハンバーガーメニューアイコン -->
+        <div class="menu-icon" onclick="toggleMenu()">
+            ☰
+        </div>
+
+        <nav class="header-nav">
+            <ul class="header-list">
+                <li class="header-text">
+                    <a href="../../../index.html">
+                        Home
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/biography.html">
+                        Biography
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/publications.html">
+                        Publications
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/demo.html">
+                        Demo
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/link.html">
+                        Link
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/contact.html">
+                        Contact
+                    </a>
+                </li>
+            </ul>
+
+        </nav>
+
+
+    </header>
+
+    <!-- パンくずリスト -->
+    <div id="breadcrumb_area">
+        <ul class="bread" id="breadcrumb_list">
+            <li><a href="../../../index.html">Home</a></li>
+            <li><a href="../../../index/demo.html">Demo</a></li>
+            <li><a href="../../../index/Demo/MediaPipe_demo_top.html">MediaPipe top</a></li>
+            <li><a href="../../../index/Demo/MediaPipe/MediaPipe_face_trace_online.html">Application 1</a></li>
+
+        </ul>
+    </div>
+
+    <section class="section-article">
+        <h1 class="title">
+            応用例：開口距離を求める
+        </h1>
+
+
+        <div class="article-div">
+            <budoux-ja>
+                <p class="article-body">
+                    以下では推定された身体ランドマークから開口度合いをリアルタイムで求めて、その変化を図示しています。
+                </p>
+
+                <div class="container">
+                    <video class="input_video"></video>
+
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button id="btn-download-video" class="btn" style="flex:1;">動画保存</button>
+                        <button id="btn-analysis-download" class="btn" style="flex:1;">音声保存 (WAV)</button>
+                    </div>
+                    <div class="content_demo_mediapipe">
+                        <canvas class="output_canvas"></canvas>
+                        <canvas id="distanceChart" class="chart_mediapipe"></canvas> <!-- グラフ表示用のCanvas -->
+                        <div class="landmark-grid-container"></div>
+                    </div>
+                </div>
+
+                <label><input type="checkbox" id="showimg" checked>show original image</label>
+                <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
+                <hr>
+
+                <ul class="reference-body">
+                    例えば、開口度合いと歌の音響的特徴との関係を研究しようとしています。<br>
+                    将来的には、日本と海外のオペラ歌手の間で、どのように口の制御が違うかなどを解明したいと考えています。<br>
+                    <br>
+                    <b>[Reference]</b> <br>
+                    <li class="reference-list">
+                        <a href="https://chuoling.github.io/mediapipe/solutions/face_mesh.html">Face Mesh -
+                            mediapipe</a>
+                    </li>
+                </ul>
+
+
+            </budoux-ja>
+        </div>
+
+
+    </section>
+
+
+
+
+
+
+    <footer class="footer">
+        <ul>
+            <li class="footer-list"><a href="../../../index/biography.html">経歴</a></li>
+            <li class="footer-list"><a href="../../../index/demo.html">過去の演奏</a></li>
+            <li class="footer-list"><a href="../../../index/publications.html">研究の業績</a></li>
+            <li class="footer-list"><a href="../../../index/link.html">リンク</a></li>
+            <li class="footer-list"><a href="../../../index/contact.html">お問い合わせ</a></li>
+        </ul>
+
+        <div class="footer-sns">
+            <a
+                href="https://twitter.com/Tsutchy011?ref_src=twsrc%5Etfw%7Ctwcamp%5Eembeddedtimeline%7Ctwterm%5Escreen-name%3ATsutchy011%7Ctwcon%5Es2">
+                <img class="footer-icon" src="../../../assets/images/Twitter_social_icons_circle_blue.png"
+                    alt="Twitterへのリンク">
+            </a>
+
+            <a href="https://www.facebook.com/profile.php?id=100002934045529">
+                <img class="footer-icon" src="../../../assets/images/f_logo_RGB-Blue_250.png" alt="Facebookへのリンク">
+            </a>
+
+            <a href="https://mastodon.social/@shintyan011">
+                <img class="footer-icon" src="../../../assets/images/mastodon.svg" alt="Mastodonへのリンク">
+            </a>
+        </div>
+
+        <p>
+            Copyright © 2022–<span id="currentYear"></span> Shinya Tsuji Official Website
+        </p>
+    </footer>
+
+
+
+    <script src="../../../assets/js/toggleMenu.js"></script>
+    <script src="../../../assets/js/header.js"> </script>
+
+    <script>
+        document.getElementById("currentYear").textContent = new Date().getFullYear();
+    </script>
+
+
+    <script type="module">
+        import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+
+        const videoElement = document.getElementsByClassName('input_video')[0];
+        const canvasElement = document.getElementsByClassName('output_canvas')[0];
+        const canvasCtx = canvasElement.getContext('2d');
+
+        const showimg = document.getElementById('showimg');
+        const mirrormode = document.getElementById('mirrormode');
+
+        const distanceData = []; // 角度データの配列
+        let frameCount = 0; // フレーム数を追跡するカウンタ
+        const displayedFrameCount = 101;
+
+
+        // グラフを初期化する関数
+        const ctx = document.getElementById('distanceChart').getContext('2d');
+        const distanceChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // 時間（フレーム）ラベル
+                datasets: [{
+                    label: 'Mouth Distance (Pixels)',
+                    data: distanceData,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Frame'
+                        }
+                    },
+                    y: {
+                        min: 0,
+                        max: 300,
+                        title: {
+                            display: true,
+                            text: 'Distance (Pixels)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 2つの座標の距離を計算する関数
+        function calculateDistanceBetweenLips(x1, x2, y1, y2) {
+            const d1 = Math.pow(x1 - x2, 2); // x1, 2の距離
+            const d2 = Math.pow(y1 - y2, 2); // y1, 2の距離
+            let distancePix = Math.round(Math.sqrt(d1 + d2));
+
+            return distancePix;
+        }
+
+
+        const faceMesh = new FaceMesh({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+            }
+        });
+
+        faceMesh.setOptions({
+            maxNumFaces: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        faceMesh.onResults((results) => {
+            console.log(results); // 追加: resultsの内容を確認
+
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+            canvasCtx.clearRect(0, 0, w, h);
+
+            if (mirrormode.checked) {
+                canvasCtx.scale(-1, 1);
+                canvasCtx.translate(-w, 0);
+            }
+
+            if (showimg.checked) {
+                canvasCtx.drawImage(results.image, 0, 0, w, h);
+            }
+
+            // ランドマークの取得
+            if (results.multiFaceLandmarks.length > 0) {
+                const lm0 = results.multiFaceLandmarks[0][13]; // Upper lip
+                const lm17 = results.multiFaceLandmarks[0][14]; // Lower lip
+
+                // ピクセル座標に変換
+                const [x1, y1] = [lm0.x * w, lm0.y * h];
+                const [x2, y2] = [lm17.x * w, lm17.y * h];
+
+                // 角度の計算
+                const distancePix = calculateDistanceBetweenLips(x1, x2, y1, y2);
+
+                // ランドマークと角度の描画
+                canvasCtx.fillStyle = 'red';
+                canvasCtx.beginPath();
+                canvasCtx.arc(x1, y1, 5, 0, Math.PI * 2);
+                canvasCtx.fill();
+
+                canvasCtx.fillStyle = 'green';
+                canvasCtx.beginPath();
+                canvasCtx.arc(x2, y2, 5, 0, Math.PI * 2);
+                canvasCtx.fill();
+
+                // 関節を結ぶ線の描画
+                canvasCtx.strokeStyle = 'yellow';
+                canvasCtx.lineWidth = 4;
+                canvasCtx.beginPath();
+                canvasCtx.moveTo(x1, y1);
+                canvasCtx.lineTo(x2, y2);
+                canvasCtx.stroke();
+
+                if (mirrormode.checked) {
+                    canvasCtx.save(); // 現在の状態を保存
+                    canvasCtx.scale(-1, 1);
+                    canvasCtx.translate(-w, 0);
+                }
+
+                // 距離の表示
+                canvasCtx.font = '90px Arial'; // フォントサイズを大きく設定
+                canvasCtx.fillStyle = 'orange';
+
+                // ミラーモードの時にテキストのx座標を調整
+                const textX = mirrormode.checked ? w - (x2 - 20) : x2 - 20;
+                canvasCtx.fillText(`Distance: ${Math.round(distancePix)} [px]`, textX, y2 - 20);
+
+                // スケーリングを元に戻す
+                if (mirrormode.checked) {
+                    canvasCtx.restore(); // 保存した状態を復元
+                }
+
+                // グラフに距離を追加
+                if (distanceData.length > 100) {
+                    distanceData.shift(); // 古いデータを削除
+                    distanceChart.data.labels.shift();
+                }
+                distanceData.push(distancePix);
+                frameCount++;
+                // x軸のラベルを更新（102, 103, ... の形式）
+                if (frameCount > displayedFrameCount) {
+                    distanceChart.data.labels.push(frameCount + 1); // 1から始める
+                } else {
+                    distanceChart.data.labels.push(frameCount); // 1フレーム目からのラベルを保持
+                }
+                distanceChart.update();
+            } else {
+                // ランドマークが取得できなかった場合は、元の映像をそのまま描画
+                canvasCtx.drawImage(results.image, 0, 0, w, h);
+            }
+        });
+
+
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                const dpi = devicePixelRatio;
+                canvasElement.width = videoElement.videoWidth * dpi;
+                canvasElement.height = videoElement.videoHeight * dpi;
+                await faceMesh.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720,
+        });
+
+        camera.start();
+    </script>
+
+</body>
+
+</html>

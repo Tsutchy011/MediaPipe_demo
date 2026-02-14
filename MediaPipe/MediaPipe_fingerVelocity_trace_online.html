@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="jpn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>辻慎也 | ピアニスト・研究者 | Shinya Tsuji ホームページ</title>
+    <meta name="description"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../../assets/css/sanitize.css">
+    <link rel="stylesheet" href="../../../assets/css/style.css">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+    <link rel="icon" type="image/png" href="../../../assets/images/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../../assets/images/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../../../assets/images/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/images/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！" />
+    <link rel="manifest" href="../../../assets/images/favicon/site.webmanifest" />
+    <script src="https://unpkg.com/budoux/bundle/budoux-ja.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1 class="header-logo">
+            <a href="../../../index.html">
+                S. Tsuji Official
+            </a>
+        </h1>
+
+        <!-- ハンバーガーメニューアイコン -->
+        <div class="menu-icon" onclick="toggleMenu()">
+            ☰
+        </div>
+
+        <nav class="header-nav">
+            <ul class="header-list">
+                <li class="header-text">
+                    <a href="../../../index.html">
+                        Home
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/biography.html">
+                        Biography
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/publications.html">
+                        Publications
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/demo.html">
+                        Demo
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/link.html">
+                        Link
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/contact.html">
+                        Contact
+                    </a>
+                </li>
+            </ul>
+
+        </nav>
+
+
+    </header>
+
+    <!-- パンくずリスト -->
+    <div id="breadcrumb_area">
+        <ul class="bread" id="breadcrumb_list">
+            <li><a href="../../../index.html">Home</a></li>
+            <li><a href="../../../index/demo.html">Demo</a></li>
+            <li><a href="../../../index/Demo/MediaPipe_demo_top.html">MediaPipe top</a></li>
+            <li><a href="../../../index/Demo/MediaPipe/MediaPipe_fingerVelocity_trace_online.html">Application 2</a>
+            </li>
+
+        </ul>
+    </div>
+
+    <section class="section-article">
+        <h1 class="title">
+            応用例：指の動く速度を求める
+        </h1>
+
+
+        <div class="article-div">
+            <budoux-ja>
+                <p class="article-body">
+                    以下では推定された身体ランドマークから人差し指の速度をリアルタイムで求めて、図示しています。<br>
+                </p>
+
+                <div class="container">
+                    <video class="input_video"></video>
+
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button id="btn-download-video" class="btn" style="flex:1;">動画保存</button>
+                    </div>
+                    <div class="landmark-grid-container"></div>
+                </div>
+                <label><input type="checkbox" id="showimg" checked>show original image</label>
+                <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
+                <hr>
+
+                <ul class="reference-body">
+                    例えば、手首や腕と指先のvelocityとの関わりを研究したく思っています。<br>
+                    将来的には、ピアノ演奏者における初学者への指導の応用を考えています。<br>
+                    <br>
+                    <b>[Reference]</b> <br>
+                    <li class="reference-list">
+                        <a href="https://chuoling.github.io/mediapipe/solutions/hands.html">Hands - mediapipe</a>
+                    </li>
+                </ul>
+
+
+            </budoux-ja>
+        </div>
+
+
+    </section>
+
+
+
+
+
+
+    <footer class="footer">
+        <ul>
+            <li class="footer-list"><a href="../../../index/biography.html">経歴</a></li>
+            <li class="footer-list"><a href="../../../index/demo.html">過去の演奏</a></li>
+            <li class="footer-list"><a href="../../../index/publications.html">研究の業績</a></li>
+            <li class="footer-list"><a href="../../../index/link.html">リンク</a></li>
+            <li class="footer-list"><a href="../../../index/contact.html">お問い合わせ</a></li>
+        </ul>
+
+        <div class="footer-sns">
+            <a
+                href="https://twitter.com/Tsutchy011?ref_src=twsrc%5Etfw%7Ctwcamp%5Eembeddedtimeline%7Ctwterm%5Escreen-name%3ATsutchy011%7Ctwcon%5Es2">
+                <img class="footer-icon" src="../../../assets/images/Twitter_social_icons_circle_blue.png"
+                    alt="Twitterへのリンク">
+            </a>
+
+            <a href="https://www.facebook.com/profile.php?id=100002934045529">
+                <img class="footer-icon" src="../../../assets/images/f_logo_RGB-Blue_250.png" alt="Facebookへのリンク">
+            </a>
+
+            <a href="https://mastodon.social/@shintyan011">
+                <img class="footer-icon" src="../../../assets/images/mastodon.svg" alt="Mastodonへのリンク">
+            </a>
+        </div>
+
+        <p>
+            Copyright © 2022–<span id="currentYear"></span> Shinya Tsuji Official Website
+        </p>
+    </footer>
+
+
+
+    <script src="../../../assets/js/toggleMenu.js"></script>
+    <script src="../../../assets/js/header.js"> </script>
+
+    <script>
+        document.getElementById("currentYear").textContent = new Date().getFullYear();
+    </script>
+
+
+    <script type="module">
+        import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+
+        const videoElement = document.getElementsByClassName('input_video')[0];
+        const canvasElement = document.getElementsByClassName('output_canvas')[0];
+        const canvasCtx = canvasElement.getContext('2d');
+
+        let prevX = null, prevY = null, prevTime = null; // 前フレームの情報
+        const velocityData = [];
+        let frameCount = 0;
+        const displayedFrameCount = 101;
+
+        // Velocity 用グラフ
+        const ctx = document.getElementById('velocityChart').getContext('2d');
+        const velocityChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Finger Velocity (px/second)',
+                    data: velocityData,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { title: { display: true, text: 'Frame' } },
+                    y: { min: 0, max: 8000, title: { display: true, text: 'Velocity (px/s)' } }
+                }
+            }
+        });
+
+        // HandTracking をセットアップ
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+        });
+
+        hands.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+        });
+
+        hands.onResults((results) => {
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, w, h);
+
+            if (mirrormode.checked) {
+                canvasCtx.scale(-1, 1);
+                canvasCtx.translate(-w, 0);
+            }
+
+            if (showimg.checked) {
+                canvasCtx.drawImage(
+                    results.image, 0, 0, canvasElement.width, canvasElement.height);
+            }
+
+            if (results.multiHandLandmarks) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS,
+                        { color: '#00FF00', lineWidth: 5 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2 });
+                }
+            }
+
+            if (results.multiHandLandmarks.length === 0) return;
+
+            // 人差し指の先端（INDEX_FINGER_TIP: id=8）
+            const landmark = results.multiHandLandmarks[0][8];
+            const x = landmark.x * w;
+            const y = landmark.y * h;
+            const now = performance.now(); // 現在時刻（ms）
+
+            // 速度計算 (2フレーム間の距離 / 経過時間)
+            if (prevX !== null && prevY !== null && prevTime !== null) {
+                const dx = x - prevX;
+                const dy = y - prevY;
+                const dt = (now - prevTime) / 1000; // 秒換算
+
+                if (dt > 0) {
+                    const velocity = Math.sqrt(dx ** 2 + dy ** 2) / dt;
+                    velocityData.push(velocity);
+                }
+            }
+
+            // 古いデータを削除
+            if (velocityData.length > 100) {
+                velocityData.shift();
+                velocityChart.data.labels.shift();
+            }
+
+            velocityChart.data.labels.push(frameCount++);
+            velocityChart.update();
+
+            // 更新
+            prevX = x;
+            prevY = y;
+            prevTime = now;
+
+            // 指のランドマークを描画
+            canvasCtx.fillStyle = 'red';
+            canvasCtx.beginPath();
+            canvasCtx.arc(x, y, 5, 0, 2 * Math.PI);
+            canvasCtx.fill();
+
+            if (mirrormode.checked) {
+                canvasCtx.save(); // 現在の状態を保存
+                canvasCtx.scale(-1, 1);
+                canvasCtx.translate(-w, 0);
+            }
+
+            // 速度テキストの表示
+            canvasCtx.font = '90px Arial';
+            canvasCtx.fillStyle = 'orange';
+            const textX = mirrormode.checked ? w - (x - 10) : x - 10;
+            canvasCtx.fillText(`Velocity: ${Math.round(velocityData[velocityData.length - 1] || 0)} px/s`, textX, y - 10);
+
+            // スケーリングを元に戻す
+            if (mirrormode.checked) {
+                canvasCtx.restore(); // 保存した状態を復元
+            }
+        });
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                const dpi = devicePixelRatio;
+                canvasElement.width = videoElement.videoWidth * dpi;
+                canvasElement.height = videoElement.videoHeight * dpi;
+                await hands.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720,
+        });
+
+        camera.start();
+    </script>
+</body>
+
+</html>

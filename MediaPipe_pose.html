@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="jpn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>辻慎也 | ピアニスト・研究者 | Shinya Tsuji ホームページ</title>
+    <meta name="description"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../../assets/css/sanitize.css">
+    <link rel="stylesheet" href="../../../assets/css/style.css">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+    <link rel="icon" type="image/png" href="../../../assets/images/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../../assets/images/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../../../assets/images/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/images/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！" />
+    <link rel="manifest" href="../../../assets/images/favicon/site.webmanifest" />
+    <script src="https://unpkg.com/budoux/bundle/budoux-ja.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils_3d/control_utils_3d.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1 class="header-logo">
+            <a href="../../../index.html">
+                S. Tsuji Official
+            </a>
+        </h1>
+
+        <!-- ハンバーガーメニューアイコン -->
+        <div class="menu-icon" onclick="toggleMenu()">
+            ☰
+        </div>
+
+        <nav class="header-nav">
+            <ul class="header-list">
+                <li class="header-text">
+                    <a href="../../../index.html">
+                        Home
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/biography.html">
+                        Biography
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/publications.html">
+                        Publications
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/demo.html">
+                        Demo
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/link.html">
+                        Link
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/contact.html">
+                        Contact
+                    </a>
+                </li>
+            </ul>
+
+        </nav>
+
+
+    </header>
+
+    <!-- パンくずリスト -->
+    <div id="breadcrumb_area">
+        <ul class="bread" id="breadcrumb_list">
+            <li><a href="../../../index.html">Home</a></li>
+            <li><a href="../../../index/demo.html">Demo</a></li>
+            <li><a href="../../../index/Demo/MediaPipe_demo_top.html">MediaPipe top</a></li>
+            <li><a href="../../../index/Demo/MediaPipe/MediaPipe_pose.html">pose</a></li>
+
+        </ul>
+    </div>
+
+    <section class="section-article">
+        <h1 class="title">
+            身体の動きのキャプチャ
+        </h1>
+
+
+        <div class="article-div">
+            <budoux-ja>
+                <p class="article-body">
+                    以下に映る内蔵カメラの映像に身体を写してみてください。<br>
+                    (ポップアップが出る場合はカメラの使用を許可してください)
+                </p>
+
+                <div class="container">
+
+                    <video class="input_video"></video>
+                    <canvas class="output_canvas" width="1280px" height="720px"></canvas>
+                    <div class="landmark-grid-container"></div>
+                </div>
+                <label><input type="checkbox" id="showimg" checked>show original image</label>
+                <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
+                <hr>
+
+                <ul class="reference-body">
+                    バイオリンなどの楽器を弾くヒトの身体の制御の分析への応用を考えています。<br>
+                    <br>
+                    <b>[Reference]</b> <br>
+                    <li class="reference-list">
+                        <a href="https://chuoling.github.io/mediapipe/solutions/pose.html">Pose Segmentation -
+                            mediapipe</a>
+                    </li>
+                </ul>
+
+
+            </budoux-ja>
+        </div>
+
+
+    </section>
+
+
+
+
+
+
+    <footer class="footer">
+        <ul>
+            <li class="footer-list"><a href="../../../index/biography.html">経歴</a></li>
+            <li class="footer-list"><a href="../../../index/demo.html">過去の演奏</a></li>
+            <li class="footer-list"><a href="../../../index/publications.html">研究の業績</a></li>
+            <li class="footer-list"><a href="../../../index/link.html">リンク</a></li>
+            <li class="footer-list"><a href="../../../index/contact.html">お問い合わせ</a></li>
+        </ul>
+
+        <div class="footer-sns">
+            <a
+                href="https://twitter.com/Tsutchy011?ref_src=twsrc%5Etfw%7Ctwcamp%5Eembeddedtimeline%7Ctwterm%5Escreen-name%3ATsutchy011%7Ctwcon%5Es2">
+                <img class="footer-icon" src="../../../assets/images/Twitter_social_icons_circle_blue.png"
+                    alt="Twitterへのリンク">
+            </a>
+
+            <a href="https://www.facebook.com/profile.php?id=100002934045529">
+                <img class="footer-icon" src="../../../assets/images/f_logo_RGB-Blue_250.png" alt="Facebookへのリンク">
+            </a>
+
+            <a href="https://mastodon.social/@shintyan011">
+                <img class="footer-icon" src="../../../assets/images/mastodon.svg" alt="Mastodonへのリンク">
+            </a>
+        </div>
+
+        <p>
+            Copyright © 2022–<span id="currentYear"></span> Shinya Tsuji Official Website
+        </p>
+    </footer>
+
+
+
+    <script src="../../../assets/js/toggleMenu.js"></script>
+    <script src="../../../assets/js/header.js"> </script>
+
+    <script>
+        document.getElementById("currentYear").textContent = new Date().getFullYear();
+    </script>
+
+    <script type="module">
+        import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+
+        const videoElement = document.getElementsByClassName('input_video')[0];
+        const canvasElement = document.getElementsByClassName('output_canvas')[0];
+        const canvasCtx = canvasElement.getContext('2d');
+        const landmarkContainer = document.getElementsByClassName('landmark-grid-container')[0];
+        const grid = new LandmarkGrid(landmarkContainer);
+        const showimg = document.getElementById('showimg');
+        const mirrormode = document.getElementById('mirrormode');
+
+        function onResults(results) {
+            if (!results.poseLandmarks) {
+                grid.updateLandmarks([]);
+                return;
+            }
+
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, w, h);
+
+            if (mirrormode.checked) {
+                canvasCtx.scale(-1, 1);
+                canvasCtx.translate(-w, 0);
+            }
+
+            canvasCtx.globalCompositeOperation = 'source-in';
+            canvasCtx.fillStyle = '#00FF00';
+            canvasCtx.fillRect(0, 0, w, h);
+
+            canvasCtx.globalCompositeOperation = 'destination-atop';
+            if (showimg.checked) {
+                canvasCtx.drawImage(results.image, 0, 0, w, h);
+            }
+
+            canvasCtx.globalCompositeOperation = 'source-over';
+            drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {
+                color: '#00FF00',
+                lineWidth: 4,
+            });
+            drawLandmarks(canvasCtx, results.poseLandmarks, {
+                color: '#FF0000',
+                lineWidth: 2,
+            });
+
+            canvasCtx.restore();
+            grid.updateLandmarks(results.poseWorldLandmarks);
+        }
+
+        const pose = new Pose({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+        });
+
+        pose.setOptions({
+            modelComplexity: 1,
+            smoothLandmarks: true,
+            enableSegmentation: false,
+            smoothSegmentation: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+        });
+
+        pose.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                const dpi = devicePixelRatio;
+                canvasElement.width = videoElement.videoWidth * dpi;
+                canvasElement.height = videoElement.videoHeight * dpi;
+                await pose.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720,
+        });
+
+        camera.start();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Mesh Analysis - MediaPipe Demo</title>
+
+    <!-- External Libs -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/face_mesh.js" crossorigin="anonymous"></script>
+
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/demo_style.css">
+
+    <!-- Local Logic (Loaded as Globals) -->
+    <script src="js/DataRecorder.js"></script>
+    <script src="js/MediaRecorder.js"></script>
+    <script src="js/AudioAnalyzer.js"></script>
+    <script src="js/CameraManager.js"></script>
+    <script src="js/TutorialManager.js"></script>
+    <script src="js/DemoCore.js"></script>
+
+    <style>
+        /* Tutorial Styles */
+        .tutorial-overlay {
+            pointer-events: auto !important;
+        }
+
+        /* Block interactions */
+        .tutorial-popup {
+            z-index: 10000;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="logo"><a href="../MediaPipe_demo_top.html" style="color:white; text-decoration:none;">MediaPipe
+                Demo: FaceMesh</a></div>
+        <div>
+            <a href="../MediaPipe_demo_top.html"
+                style="font-size: 0.8rem; color:white; opacity: 0.7; text-decoration:none;">サイトに戻る</a>
+        </div>
+        <button class="sidebar-toggle">☰</button>
+    </header>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <div class="sidebar-overlay"></div>
+        <div class="sidebar">
+            <div class="control-group">
+                <div class="group-title">ステータス</div>
+                <div id="status-display" class="status-indicator">起動中...</div>
+            </div>
+
+            <div class="control-group">
+                <div class="group-title">録画コントロール</div>
+                <button id="btn-record" class="btn btn-primary">録画開始</button>
+                <div style="display:flex; gap:5px; margin-top:5px;">
+                    <button id="btn-download-video" class="btn" style="flex:1;">動画保存</button>
+                </div>
+            </div>
+
+            <div class="control-group">
+                <div class="group-title">分析</div>
+                <div style="display:flex; gap:5px; margin-bottom:5px;">
+                    <button id="btn-analysis-start" class="btn btn-primary" style="flex:1;">分析開始</button>
+                    <button id="btn-analysis-stop" class="btn btn-danger" style="flex:1;" disabled>分析終了</button>
+                </div>
+                <button id="btn-analysis-calc" class="btn" disabled>録音を音響分析する</button>
+                <button id="btn-analysis-download" class="btn" style="margin-top:5px;" disabled>音声保存 (WAV)</button>
+            </div>
+
+
+
+            <div class="control-group">
+                <div class="group-title">設定</div>
+                <label class="checkbox-label"><input type="checkbox" id="check-mirror" checked> 左右反転 (ミラー)</label>
+                <label class="checkbox-label"><input type="checkbox" id="check-image" checked> カメラ映像を表示</label>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Visualizer -->
+            <div class="visualizer-area">
+                <div id="loading" class="loading-overlay">カメラ起動中...</div>
+                <video id="input_video" class="input_video" autoplay playsinline muted></video>
+                <canvas id="output_canvas" class="output_canvas"></canvas>
+            </div>
+
+            <!-- Analysis Panel -->
+            <div class="analysis-panel">
+                <div class="chart-card">
+                    <div class="chart-title">音声のスペクトル</div>
+                    <canvas id="spectrumCanvas" class="chart-canvas"></canvas>
+                </div>
+                <div class="chart-card">
+                    <div class="chart-title">母音空間図 (F1 vs F2)</div>
+                    <canvas id="vowelCanvas" class="chart-canvas"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic -->
+    <script>
+        // Ensure scripts are loaded
+        window.addEventListener('load', () => {
+            // Initialize elements
+            const videoElement = document.getElementById('input_video');
+            const canvasElement = document.getElementById('output_canvas');
+            const loadingOverlay = document.getElementById('loading');
+
+            // Setup DemoCore (Logic)
+            // Ensure DemoCore is defined before use
+            if (typeof DemoCore === 'undefined') {
+                loadingOverlay.textContent = "Error: DemoCore.js not loaded.";
+                return;
+            }
+            const demo = new DemoCore(videoElement, canvasElement);
+
+            // Sync Settings on Load
+            const checkMirror = document.getElementById('check-mirror');
+            const checkImage = document.getElementById('check-image');
+            if (checkMirror) demo.config.mirror = checkMirror.checked;
+            if (checkImage) demo.config.showImage = checkImage.checked;
+
+            // Canvas Resize Logic (Responsive Resolution)
+            function resizeCanvas() {
+                const spectrumCanvas = document.getElementById('spectrumCanvas');
+                const vowelCanvas = document.getElementById('vowelCanvas');
+
+                [spectrumCanvas, vowelCanvas].forEach(canvas => {
+                    if (canvas) {
+                        const rect = canvas.getBoundingClientRect();
+                        // Only update if dimensions changed to avoid flickering/loop
+                        if (canvas.width !== rect.width || canvas.height !== rect.height) {
+                            canvas.width = rect.width;
+                            canvas.height = rect.height;
+                        }
+                    }
+                });
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas(); // Initial call
+
+            // Handle Offline Analysis Result
+            demo.onAnalysisResult = (result) => {
+                const spectrumCanvas = document.getElementById('spectrumCanvas');
+                const vowelCanvas = document.getElementById('vowelCanvas');
+
+                // 1. Viz LTAS on Spectrum Canvas
+                if (spectrumCanvas && result.ltas) {
+                    const ctx = spectrumCanvas.getContext('2d');
+                    const width = spectrumCanvas.width;
+                    const height = spectrumCanvas.height;
+
+                    ctx.clearRect(0, 0, width, height);
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(0, 0, width, height);
+
+                    // LTAS Curve
+                    ctx.beginPath();
+                    ctx.strokeStyle = '#00ff00';
+                    ctx.lineWidth = 2;
+                    const len = result.ltas.length;
+                    const step = width / len;
+
+                    // Normalize
+                    let maxVal = 0;
+                    for (let v of result.ltas) if (v > maxVal) maxVal = v;
+                    if (maxVal < 0.001) maxVal = 1;
+
+                    for (let i = 0; i < len; i++) {
+                        const x = i * step;
+                        const y = height - (result.ltas[i] / maxVal) * (height - 30);
+                        if (i === 0) ctx.moveTo(x, y);
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.stroke();
+
+                    // Centroid Line
+                    if (result.centroid) {
+                        const nyquist = 22050;
+                        const x = (result.centroid / nyquist) * width;
+
+                        ctx.beginPath();
+                        ctx.strokeStyle = '#ff00ff';
+                        ctx.setLineDash([5, 5]);
+                        ctx.moveTo(x, height);
+                        ctx.lineTo(x, 0);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        // Label (Right aligned)
+                        ctx.textAlign = "right";
+                        ctx.fillStyle = '#ff00ff';
+                        ctx.font = "12px Arial";
+                        ctx.fillText(`Centroid: ${result.centroid.toFixed(0)}Hz`, width - 10, 20);
+                        ctx.textAlign = "left"; // Reset
+                    }
+
+                    ctx.fillStyle = '#fff';
+                    ctx.font = "14px Arial";
+                    ctx.fillText("Long-Term Average Spectrum", 10, 20);
+                }
+
+                // 2. Viz Formant Cloud on Vowel Canvas
+                if (vowelCanvas && result.formants) {
+                    const ctx = vowelCanvas.getContext('2d');
+                    const width = vowelCanvas.width;
+                    const height = vowelCanvas.height;
+
+                    ctx.clearRect(0, 0, width, height);
+                    ctx.fillStyle = '#111';
+                    ctx.fillRect(0, 0, width, height);
+
+                    // Grid & Axes (F1:0-1500, F2:500-5000)
+                    const f1Max = 1500, f1Min = 0;
+                    const f2Max = 5000, f2Min = 500;
+
+                    ctx.strokeStyle = '#444';
+                    ctx.setLineDash([2, 5]);
+                    ctx.beginPath();
+                    // Horizontal (F1)
+                    for (let f1 = 200; f1 < 1500; f1 += 200) {
+                        const y = (f1 - f1Min) / (f1Max - f1Min) * height;
+                        ctx.moveTo(0, y); ctx.lineTo(width, y);
+
+                        // Axis Labels
+                        ctx.fillStyle = '#666';
+                        ctx.font = "10px Arial";
+                        ctx.fillText(f1, 2, y - 2);
+                    }
+                    // Vertical (F2)
+                    for (let f2 = 1000; f2 < 5000; f2 += 1000) {
+                        const x = (f2Max - f2) / (f2Max - f2Min) * width;
+                        ctx.moveTo(x, 0); ctx.lineTo(x, height);
+
+                        // Axis Labels
+                        ctx.fillStyle = '#666';
+                        ctx.fillText(f2, x + 2, height - 2);
+                    }
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    // Labels
+                    ctx.fillStyle = '#aaa';
+                    ctx.font = "14px Arial"; // Larger font
+
+                    // Approx positions for Japanese vowels (Adjusted for new scale)
+                    // F1/F2 data from approximate averages
+                    const vowels = [
+                        { t: "/i/", f1: 300, f2: 2500 },
+                        { t: "/e/", f1: 500, f2: 1900 },
+                        { t: "/a/", f1: 800, f2: 1200 },
+                        { t: "/o/", f1: 500, f2: 900 },
+                        { t: "/u/", f1: 350, f2: 1300 } // Adjusted /u/ mainly for overlap check
+                    ];
+
+                    vowels.forEach(v => {
+                        const x = (f2Max - v.f2) / (f2Max - f2Min) * width;
+                        const y = (v.f1 - f1Min) / (f1Max - f1Min) * height;
+                        ctx.fillText(v.t, x, y);
+                    });
+
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = "left";
+                    ctx.fillText("F1 (Low -> High)", 10, height - 10);
+                    ctx.textAlign = "right";
+                    ctx.fillText("F2 (High -> Low)", width - 10, 20);
+                    ctx.textAlign = "left";
+
+                    // Scatter Plot
+                    ctx.fillStyle = 'rgba(0, 200, 255, 0.6)';
+                    result.formants.forEach(f => {
+                        if (f.F1 > 0 && f.F2 > 0) {
+                            const x = (f2Max - f.F2) / (f2Max - f2Min) * width;
+                            const y = (f.F1 - f1Min) / (f1Max - f1Min) * height;
+
+                            if (x >= 0 && x <= width && y >= 0 && y <= height) {
+                                ctx.beginPath();
+                                ctx.arc(x, y, 3, 0, 2 * Math.PI);
+                                ctx.fill();
+                            }
+                        }
+                    });
+
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(`Vowel Space (N=${result.formants.length})`, 10, 15);
+                }
+            };
+
+            // Loop for Analysis Visualization
+            const spectrumCanvas = document.getElementById('spectrumCanvas');
+            const vowelCanvas = document.getElementById('vowelCanvas');
+
+            function analysisLoop() {
+                if (demo.isAnalyzingRealtime && demo.audioAnalyzer.analyser) {
+                    const data = demo.audioAnalyzer.getFrequencyData();
+                    const formants = demo.audioAnalyzer.estimateFormants();
+
+                    // Spectrum
+                    if (spectrumCanvas) {
+                        const ctx = spectrumCanvas.getContext('2d');
+                        const width = spectrumCanvas.width;
+                        const height = spectrumCanvas.height;
+
+                        // Margin match (Simplified for realtime)
+                        const margin = { top: 10, right: 10, bottom: 10, left: 10 };
+                        const graphW = width - margin.left - margin.right;
+                        const graphH = height - margin.top - margin.bottom;
+
+                        ctx.fillStyle = '#222';
+                        ctx.fillRect(0, 0, width, height);
+
+                        // Bar char
+                        const barWidth = (graphW / data.length) * 2.5;
+                        let x = margin.left;
+                        for (let i = 0; i < data.length; i++) {
+                            const h = (data[i] / 255) * graphH;
+                            ctx.fillStyle = `hsl(${i / data.length * 360}, 100%, 50%)`;
+                            ctx.fillRect(x, margin.top + graphH - h, barWidth, h);
+                            x += barWidth + 1;
+                        }
+                    }
+
+                    // Vowel Space
+                    if (vowelCanvas) {
+                        const ctx = vowelCanvas.getContext('2d');
+                        const width = vowelCanvas.width;
+                        const height = vowelCanvas.height;
+
+                        // Margins match offline
+                        const margin = { top: 30, right: 30, bottom: 40, left: 50 };
+                        const graphW = width - margin.left - margin.right;
+                        const graphH = height - margin.top - margin.bottom;
+                        const f1Max = 1500, f1Min = 0;
+                        const f2Max = 5000, f2Min = 500;
+
+                        // Fade effect (Overlay semi-transparent background)
+                        ctx.fillStyle = 'rgba(34, 34, 34, 0.2)';
+                        ctx.fillRect(margin.left, margin.top, graphW, graphH);
+
+                        // We also need to clear margins to keep labels clean if we redraw them, 
+                        // but for realtime, we often just want to fade the dots.
+                        // For simplicity, let's just clear margins and redraw frame?
+                        // No, fading dots is cool. Let's just redraw the frame over the margins.
+                        ctx.fillStyle = '#111';
+                        // Top
+                        ctx.fillRect(0, 0, width, margin.top);
+                        // Bottom
+                        ctx.fillRect(0, height - margin.bottom, width, margin.bottom);
+                        // Left
+                        ctx.fillRect(0, 0, margin.left, height);
+                        // Right
+                        ctx.fillRect(width - margin.right, 0, margin.right, height);
+
+                        // Draw Axes (Static)
+                        ctx.strokeStyle = '#444';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(margin.left, margin.top, graphW, graphH);
+
+                        // Helper Labels (Simplified for RT)
+                        ctx.fillStyle = '#666';
+                        ctx.font = "10px Arial";
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText("F1", margin.left - 5, margin.top + graphH / 2);
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'top';
+                        ctx.fillText("F2", margin.left + graphW / 2, margin.top + graphH + 5);
+
+                        // Draw Dot
+                        if (formants.F1 > 0 && formants.F2 > 0) {
+                            // Match limits: F1(0-1500), F2(500-5000)
+                            const x = margin.left + (f2Max - formants.F2) / (f2Max - f2Min) * graphW;
+                            const y = margin.top + (formants.F1 - f1Min) / (f1Max - f1Min) * graphH;
+
+                            if (x >= margin.left && x <= margin.left + graphW && y >= margin.top && y <= margin.top + graphH) {
+                                ctx.beginPath();
+                                ctx.arc(x, y, 5, 0, 2 * Math.PI);
+                                ctx.fillStyle = '#ff4d4d';
+                                ctx.fill();
+                            }
+                        }
+                    }
+                }
+                requestAnimationFrame(analysisLoop);
+            }
+            analysisLoop();
+
+            // Define Drawing Logic
+            demo.drawResults = (results) => {
+                const canvasCtx = demo.canvasCtx;
+                const w = canvasElement.width;
+                const h = canvasElement.height;
+
+                canvasCtx.save();
+                canvasCtx.clearRect(0, 0, w, h);
+
+                if (demo.config.mirror) {
+                    canvasCtx.scale(-1, 1);
+                    canvasCtx.translate(-w, 0);
+                }
+
+                // Draw Image
+                if (demo.config.showImage) {
+                    canvasCtx.drawImage(results.image, 0, 0, w, h);
+                } else {
+                    canvasCtx.fillStyle = '#000';
+                    canvasCtx.fillRect(0, 0, w, h);
+                }
+
+                // Draw Landmarks
+                if (results.multiFaceLandmarks) {
+                    for (const landmarks of results.multiFaceLandmarks) {
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, { color: '#C0C0C070', lineWidth: 1 });
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, { color: '#FF3030', lineWidth: 2 });
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, { color: '#FF3030', lineWidth: 2 });
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, { color: '#30FF30', lineWidth: 2 });
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, { color: '#30FF30', lineWidth: 2 });
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, { color: '#E0E0E0', lineWidth: 2 });
+                        drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, { color: '#E0E0E0', lineWidth: 2 });
+                    }
+                }
+                canvasCtx.restore();
+            };
+
+            // Setup FaceMesh
+            const faceMesh = new FaceMesh({
+                locateFile: (file) => {
+                    return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
+                }
+            });
+            faceMesh.setOptions({
+                maxNumFaces: 1,
+                refineLandmarks: true,
+                minDetectionConfidence: 0.5,
+                minTrackingConfidence: 0.5
+            });
+            faceMesh.onResults((results) => {
+                loadingOverlay.classList.add('hidden');
+                demo.onResults(results);
+            });
+
+            // Setup Camera
+            const camera = new CameraManager(videoElement, {
+                onFrame: async () => {
+                    if (!demo.isPlayingBack) {
+                        await faceMesh.send({ image: videoElement });
+                    }
+                },
+                width: 1920,
+                height: 1080
+            });
+
+            // Resize Canvas to match Video
+            videoElement.addEventListener('loadedmetadata', () => {
+                canvasElement.width = videoElement.videoWidth;
+                canvasElement.height = videoElement.videoHeight;
+            });
+
+            // Start Camera
+            camera.start().catch(e => {
+                loadingOverlay.textContent = "Camera Error: " + e.message;
+            });
+
+            // UI Listeners (Mirror/Image toggles not covered by DemoCore default)
+            if (checkMirror) {
+                checkMirror.addEventListener('change', (e) => {
+                    demo.config.mirror = e.target.checked;
+                });
+            }
+            if (checkImage) {
+                checkImage.addEventListener('change', (e) => {
+                    demo.config.showImage = e.target.checked;
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

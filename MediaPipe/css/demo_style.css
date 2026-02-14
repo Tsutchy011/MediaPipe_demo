@@ -1,0 +1,373 @@
+/* 
+ * MediaPipe Demos - Unified Dashboard Style 
+ * Based on user feedback for a "One Window" experience.
+ */
+
+:root {
+  --primary-color: #007bff;
+  --bg-dark: #1e1e1e;
+  --bg-panel: #2a2a2a;
+  --text-light: #e0e0e0;
+  --accent-color: #00d4ff;
+  --danger-color: #ff4d4d;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  font-family: 'Noto Sans JP', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  /* Prevent scrolling, force "One Window" feel */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header - Keep it slim */
+.header {
+  background: #000;
+  padding: 10px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #333;
+  height: 50px;
+  z-index: 1000;
+}
+
+.header a {
+  color: #fff;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+/* Main Dashboard Layout */
+.dashboard-container {
+  display: flex;
+  flex: 1;
+  /* Fill remaining height */
+  overflow: hidden;
+  position: relative;
+  height: calc(100vh - 50px);
+}
+
+/* Sidebar for Controls */
+.sidebar {
+  width: 320px;
+  background: var(--bg-panel);
+  padding: 20px;
+  overflow-y: auto;
+  border-right: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  z-index: 100;
+  transition: transform 0.3s ease;
+}
+
+.sidebar.collapsed {
+  transform: translateX(-320px);
+  position: absolute;
+  height: 100%;
+}
+
+.sidebar-toggle {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 200;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  display: none;
+  /* Only show on mobile or when collapsed */
+}
+
+/* Main Content Area (Visualizer + Analysis) */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  background: #000;
+}
+
+/* Visualizer (Camera/Canvas) */
+.visualizer-area {
+  position: relative;
+  flex: 2;
+  /* Takes up most space */
+  background: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  min-height: 50%;
+  padding: 0;
+  /* No padding */
+}
+
+/* Ensure video/canvas fill the area */
+.input_video,
+.output_canvas {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Fill the area (crop if needed) or contain (letterbox) - User asked for "Window Whole", so cover is best */
+  top: 0;
+  left: 0;
+}
+
+/* Note: object-fit works for video, but canvas needs width/height attributes or CSS width/height 100% */
+
+/* If mirror mode is active, we apply scaleX(-1) in JS usually. 
+   But if we do it in CSS: */
+.mirrored {
+  transform: translate(-50%, -50%) scaleX(-1);
+}
+
+
+/* Analysis Panel (Bottom or integrated) */
+.analysis-panel {
+  height: 250px;
+  /* Fixed height for graphs */
+  background: #222;
+  border-top: 1px solid #444;
+  display: flex;
+  padding: 10px;
+  gap: 10px;
+  overflow-x: auto;
+}
+
+.chart-card {
+  background: #333;
+  border-radius: 8px;
+  padding: 10px;
+  min-width: 300px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chart-title {
+  font-size: 0.9rem;
+  color: #ccc;
+  margin-bottom: 5px;
+  text-align: center;
+}
+
+.chart-canvas {
+  width: 100%;
+  height: 100%;
+  background: #000;
+  border-radius: 4px;
+}
+
+/* Control Groups in Sidebar */
+.control-group {
+  background: #333;
+  padding: 15px;
+  border-radius: 8px;
+}
+
+.group-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: #888;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #444;
+  padding-bottom: 5px;
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 8px;
+  background: #444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  text-align: center;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+
+.btn:hover {
+  background: #555;
+}
+
+.btn-primary {
+  background: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background: #0069d9;
+}
+
+.btn-danger {
+  background: var(--danger-color);
+}
+
+.btn-danger:hover {
+  background: #cc0000;
+}
+
+.status-indicator {
+  padding: 8px;
+  background: #444;
+  border-radius: 4px;
+  text-align: center;
+  font-weight: bold;
+  color: #fff;
+}
+
+.status-indicator.recording {
+  background: var(--danger-color);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/* Checkbox Labels */
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.checkbox-label input {
+  margin-right: 10px;
+}
+
+/* Loading Overlay */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 50;
+  font-size: 1.5rem;
+}
+
+.loading-overlay.hidden {
+  display: none;
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 900px) {
+
+  /* Header Adjustment */
+  .header {
+    padding: 5px 10px;
+  }
+
+  .header .logo {
+    font-size: 0.9rem;
+  }
+
+  /* Sidebar as Overlay */
+  .sidebar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 260px;
+    transform: translateX(-100%);
+    /* Hidden by default on mobile */
+    transition: transform 0.3s ease;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+  }
+
+  /* Class to show sidebar */
+  .sidebar.active {
+    transform: translateX(0);
+  }
+
+  /* Overlay background when sidebar is open */
+  .sidebar-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 90;
+    display: none;
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+
+  /* Toggle Button */
+  .sidebar-toggle {
+    display: block;
+    /* Show toggle */
+  }
+
+  /* Main Content */
+  .dashboard-container {
+    flex-direction: column;
+  }
+
+  .main-content {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Visualizer Area */
+  .visualizer-area {
+    height: 50vh;
+    /* Top half */
+    flex: none;
+  }
+
+  /* Analysis Panel */
+  .analysis-panel {
+    height: auto;
+    flex: 1;
+    /* Bottom half */
+    flex-direction: column;
+    overflow-y: auto;
+    padding-bottom: 20px;
+  }
+
+  .chart-card {
+    min-width: 0;
+    /* Allow shrinking */
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    /* Maintain shape */
+    margin-bottom: 10px;
+  }
+}

@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="jpn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>辻慎也 | ピアニスト・研究者 | Shinya Tsuji ホームページ</title>
+    <meta name="description"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../../assets/css/sanitize.css">
+    <link rel="stylesheet" href="../../../assets/css/style.css">
+    <script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+
+    <link rel="icon" type="image/png" href="../../../assets/images/favicon/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="../../../assets/images/favicon/favicon.svg" />
+    <link rel="shortcut icon" href="../../../assets/images/favicon/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="../../../assets/images/favicon/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-title"
+        content="辻 慎也（ピアニスト・研究者）のホームページです。東京都内や近郊でピアノ・ソルフェージュ・楽典（音楽理論）の各種レッスンを行っています。体験レッスンなど、お気軽にお問い合わせください！" />
+    <link rel="manifest" href="../../../assets/images/favicon/site.webmanifest" />
+    <script src="https://unpkg.com/budoux/bundle/budoux-ja.min.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
+        crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+
+<body>
+
+    <header class="header">
+        <h1 class="header-logo">
+            <a href="../../../index.html">
+                S. Tsuji Official
+            </a>
+        </h1>
+
+        <!-- ハンバーガーメニューアイコン -->
+        <div class="menu-icon" onclick="toggleMenu()">
+            ☰
+        </div>
+
+        <nav class="header-nav">
+            <ul class="header-list">
+                <li class="header-text">
+                    <a href="../../../index.html">
+                        Home
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/biography.html">
+                        Biography
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/publications.html">
+                        Publications
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/demo.html">
+                        Demo
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/link.html">
+                        Link
+                    </a>
+                </li>
+                <li class="header-text">
+                    <a href="../../../index/contact.html">
+                        Contact
+                    </a>
+                </li>
+            </ul>
+
+        </nav>
+
+
+    </header>
+
+    <!-- パンくずリスト -->
+    <div id="breadcrumb_area">
+        <ul class="bread" id="breadcrumb_list">
+            <li><a href="../../../index.html">Home</a></li>
+            <li><a href="../../../index/demo.html">Demo</a></li>
+            <li><a href="../../../index/Demo/MediaPipe_demo_top.html">MediaPipe top</a></li>
+            <li><a href="../../../index/Demo/MediaPipe/MediaPipe_angle_trace_online.html">Application 3</a></li>
+
+        </ul>
+    </div>
+
+    <section class="section-article">
+        <h1 class="title">
+            応用例：腕の角度を求める
+        </h1>
+
+
+        <div class="article-div">
+            <budoux-ja>
+                <p class="article-body">
+                    以下では推定された身体ランドマークから右肘の角度をリアルタイムで求めて、図示しています。<br>
+                    *奥行き方向の推定が不安定なので、ここでは2次元の座標で計算しています。
+                </p>
+
+                <div class="container">
+                    <video class="input_video"></video>
+
+                    <div style="display:flex; gap:5px; margin-top:5px;">
+                        <button id="btn-download-video" class="btn" style="flex:1;">動画保存</button>
+                    </div>
+                    <div class="landmark-grid-container"></div>
+                </div>
+                <label><input type="checkbox" id="showimg" checked>show original image</label>
+                <label><input type="checkbox" id="mirrormode" checked>mirror mode</label>
+                <hr>
+
+                <ul class="reference-body">
+                    例えば、初心者とプロの間でbowingの制御がどのように違うかを研究しようとしています。<br>
+                    将来的には、バイオリンといった楽器における初学者への指導の応用を考えています。<br>
+                    <br>
+                    <b>[Reference]</b> <br>
+                    <li class="reference-list">
+                        <a href="https://chuoling.github.io/mediapipe/solutions/pose.html">Pose Segmentation -
+                            mediapipe</a>
+                    </li>
+                </ul>
+
+
+            </budoux-ja>
+        </div>
+
+
+    </section>
+
+
+
+
+
+
+    <footer class="footer">
+        <ul>
+            <li class="footer-list"><a href="../../../index/biography.html">経歴</a></li>
+            <li class="footer-list"><a href="../../../index/demo.html">過去の演奏</a></li>
+            <li class="footer-list"><a href="../../../index/publications.html">研究の業績</a></li>
+            <li class="footer-list"><a href="../../../index/link.html">リンク</a></li>
+            <li class="footer-list"><a href="../../../index/contact.html">お問い合わせ</a></li>
+        </ul>
+
+        <div class="footer-sns">
+            <a
+                href="https://twitter.com/Tsutchy011?ref_src=twsrc%5Etfw%7Ctwcamp%5Eembeddedtimeline%7Ctwterm%5Escreen-name%3ATsutchy011%7Ctwcon%5Es2">
+                <img class="footer-icon" src="../../../assets/images/Twitter_social_icons_circle_blue.png"
+                    alt="Twitterへのリンク">
+            </a>
+
+            <a href="https://www.facebook.com/profile.php?id=100002934045529">
+                <img class="footer-icon" src="../../../assets/images/f_logo_RGB-Blue_250.png" alt="Facebookへのリンク">
+            </a>
+
+            <a href="https://mastodon.social/@shintyan011">
+                <img class="footer-icon" src="../../../assets/images/mastodon.svg" alt="Mastodonへのリンク">
+            </a>
+        </div>
+
+        <p>
+            Copyright © 2022–<span id="currentYear"></span> Shinya Tsuji Official Website
+        </p>
+    </footer>
+
+
+
+    <script src="../../../assets/js/toggleMenu.js"></script>
+    <script src="../../../assets/js/header.js"> </script>
+
+    <script>
+        document.getElementById("currentYear").textContent = new Date().getFullYear();
+    </script>
+
+
+    <script type="module">
+        import { Camera } from "https://tsutchy011.github.io/MediaPipe_demo/camera.js";
+
+        const videoElement = document.getElementsByClassName('input_video')[0];
+        const canvasElement = document.getElementsByClassName('output_canvas')[0];
+        const canvasCtx = canvasElement.getContext('2d');
+        const landmarkContainer = document.getElementsByClassName('landmark-grid-container')[0];
+        const showimg = document.getElementById('showimg');
+        const mirrormode = document.getElementById('mirrormode');
+
+        const angleData = []; // 角度データの配列
+        let frameCount = 0; // フレーム数を追跡するカウンタ
+        const displayedFrameCount = 101;
+
+
+        // グラフを初期化する関数
+        const ctx = document.getElementById('angleChart').getContext('2d');
+        const angleChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // 時間（フレーム）ラベル
+                datasets: [{
+                    label: 'Arm Angle (Degrees)',
+                    data: angleData,
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Frame'
+                        }
+                    },
+                    y: {
+                        min: 0,
+                        max: 180,
+                        title: {
+                            display: true,
+                            text: 'Angle (Degrees)'
+                        }
+                    }
+                }
+            }
+        });
+
+        // 2つの直線のなす角度を計算する関数
+        function calculateAngleBetweenLines(x1, x2, x3, y1, y2, y3) {
+            const a1 = (y2 - y1) / (x2 - x1); // 直線1の傾き
+            const a2 = (y3 - y2) / (x3 - x2); // 直線2の傾き
+            const angleRad = Math.atan((a2 - a1) / (1 + a1 * a2)); // ラジアンでの角度
+            let angleDeg = angleRad * (180 / Math.PI); // 度に変換
+
+            // 0-180度範囲の変換
+            if (y3 < y1) {
+                angleDeg = Math.abs(angleDeg < 0 ? angleDeg : angleDeg - 180);
+            } else {
+                angleDeg = Math.abs(angleDeg < 0 ? angleDeg + 180 : angleDeg);
+            }
+            return angleDeg;
+        }
+
+
+        const pose = new Pose({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`,
+        });
+
+        pose.setOptions({
+            modelComplexity: 1,
+            smoothLandmarks: true,
+            enableSegmentation: false,
+            smoothSegmentation: true,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5,
+        });
+
+        pose.onResults((results) => {
+            if (!results.poseLandmarks || results.poseLandmarks.length < 17) {
+                // 3つの関節が取得できていない場合、角度を0にする
+                angleData.push(0);
+                if (angleData.length > 50) {
+                    angleData.shift();
+                    angleChart.data.labels.shift();
+                }
+                angleChart.data.labels.push(angleData.length);
+                angleChart.update();
+                return; // 処理を終了
+            }
+            const w = canvasElement.width;
+            const h = canvasElement.height;
+            canvasCtx.clearRect(0, 0, w, h);
+
+            if (mirrormode.checked) {
+                canvasCtx.scale(-1, 1);
+                canvasCtx.translate(-w, 0);
+            }
+
+            if (showimg.checked) {
+                canvasCtx.drawImage(results.image, 0, 0, w, h);
+            }
+
+            // ランドマークの取得
+            const lm12 = results.poseLandmarks[12]; // Shoulder
+            const lm14 = results.poseLandmarks[14]; // Elbow
+            const lm16 = results.poseLandmarks[16]; // Wrist
+
+            // ピクセル座標に変換
+            const [x1, y1] = [lm12.x * w, lm12.y * h];
+            const [x2, y2] = [lm14.x * w, lm14.y * h];
+            const [x3, y3] = [lm16.x * w, lm16.y * h];
+
+            // 角度の計算
+            const angleDeg = calculateAngleBetweenLines(x1, x2, x3, y1, y2, y3);
+
+            // ランドマークと角度の描画
+            canvasCtx.fillStyle = 'red';
+            canvasCtx.beginPath();
+            canvasCtx.arc(x1, y1, 5, 0, 2 * Math.PI);
+            canvasCtx.fill();
+
+            canvasCtx.fillStyle = 'green';
+            canvasCtx.beginPath();
+            canvasCtx.arc(x2, y2, 5, 0, 2 * Math.PI);
+            canvasCtx.fill();
+
+            canvasCtx.fillStyle = 'blue';
+            canvasCtx.beginPath();
+            canvasCtx.arc(x3, y3, 5, 0, 2 * Math.PI);
+            canvasCtx.fill();
+
+            // 関節を結ぶ線の描画
+            canvasCtx.strokeStyle = 'yellow';
+            canvasCtx.lineWidth = 4;
+            canvasCtx.beginPath();
+            canvasCtx.moveTo(x1, y1); // 肩から
+            canvasCtx.lineTo(x2, y2); // 肘まで
+            canvasCtx.lineTo(x3, y3); // 手首まで
+            canvasCtx.stroke();
+
+            if (mirrormode.checked) {
+                canvasCtx.save(); // 現在の状態を保存
+                canvasCtx.scale(-1, 1);
+                canvasCtx.translate(-w, 0);
+            }
+
+            // 角度の表示
+            canvasCtx.font = '90px Arial'; // フォントサイズを大きく設定
+            canvasCtx.fillStyle = 'orange';
+
+            const textX = mirrormode.checked ? w - (x2 - 20) : x2 - 20;
+            canvasCtx.fillText(`Angle: ${Math.round(angleDeg)}°`, textX, y2 - 20);
+
+            // グラフに角度を追加
+            if (angleData.length > 100) {
+                angleData.shift(); // 古いデータを削除
+                angleChart.data.labels.shift();
+            }
+            angleData.push(angleDeg);
+            frameCount++
+            // x軸のラベルを更新（102, 103, ... の形式）
+            if (frameCount > displayedFrameCount) {
+                angleChart.data.labels.push(frameCount + 1); // 1から始める
+            } else {
+                angleChart.data.labels.push(frameCount); // 1フレーム目からのラベルを保持
+            }
+            angleChart.update();
+        });
+
+
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                const dpi = devicePixelRatio;
+                canvasElement.width = videoElement.videoWidth * dpi;
+                canvasElement.height = videoElement.videoHeight * dpi;
+                await pose.send({ image: videoElement });
+            },
+            width: 1280,
+            height: 720,
+        });
+
+        camera.start();
+    </script>
+</body>
+
+</html>
