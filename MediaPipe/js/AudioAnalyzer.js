@@ -18,6 +18,10 @@ window.AudioAnalyzer = class AudioAnalyzer {
 
         // Formant History (smooth)
         this.lastFormants = { F1: 0, F2: 0 };
+
+        // Peak Detection for Timing Mode
+        this.isPeak = false;
+        this.currentVolume = 0;
     }
 
     async init(stream) {
@@ -54,7 +58,19 @@ window.AudioAnalyzer = class AudioAnalyzer {
     getWaveformData() {
         if (!this.analyser) return new Uint8Array(0);
         this.analyser.getByteTimeDomainData(this.dataArray);
+        this.detectPeak(this.dataArray);
         return this.dataArray;
+    }
+
+    detectPeak(waveData) {
+        let max = 0;
+        for (let i = 0; i < waveData.length; i++) {
+            const diff = Math.abs(waveData[i] - 128); // 128 is zero level in ByteTimeDomainData
+            if (diff > max) max = diff;
+        }
+        // Simple threshold for piano attack (can be adjusted)
+        this.isPeak = max > 25; 
+        this.currentVolume = max;
     }
 
     updateLTAS(currentSpectrum) {

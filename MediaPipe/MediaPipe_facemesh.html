@@ -89,15 +89,68 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Visualizer -->
-            <div class="visualizer-area">
-                <div id="loading" class="loading-overlay">カメラ起動中...</div>
-                <video id="input_video" class="input_video" autoplay playsinline muted></video>
-                <canvas id="output_canvas" class="output_canvas"></canvas>
-            </div>
+            <!-- Visualizer & Realtime Feedback -->
+            <div class="visualizer-container" style="display:flex; flex-direction:column; gap:10px; width: 100%;">
+                <div style="display:flex; gap:10px; width: 100%; flex-wrap:wrap;">
+                    <div class="visualizer-area" style="flex: 2; min-width:300px;">
+                        <div id="loading" class="loading-overlay">カメラ起動中...</div>
+                        <video id="input_video" class="input_video" autoplay playsinline muted></video>
+                        <canvas id="output_canvas" class="output_canvas"></canvas>
+                    </div>
+                    
+                    <!-- Realtime Feedback UI -->
+                    <div class="realtime-feedback-panel" style="flex: 1; min-width:250px; display:flex; flex-direction:column; gap:15px; background:#1e1e1e; padding:20px; border-radius:8px; border:1px solid #333;">
+                        <div style="font-weight:bold; color:#fff; border-bottom:1px solid #444; padding-bottom:10px; display:flex; align-items:center;">
+                            <span style="font-size:1.2rem; margin-right:5px;">🗣️</span> リアルタイム フォーム分析
+                        </div>
+                        
+                        <!-- Vertical Mouth Openness -->
+                        <div class="feedback-item">
+                            <div style="display:flex; justify-content:space-between; font-size:0.9rem; color:#ccc;">
+                                <span>口の縦幅 (Vertical)</span>
+                                <span id="val-vertical" style="font-weight:bold;">0%</span>
+                            </div>
+                            <div class="progress-bg" style="width:100%; height:14px; background:#111; border-radius:7px; margin-top:5px; overflow:hidden; border:1px solid #444;">
+                                <div id="bar-vertical" class="progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #2ebf91, #8360c3); transition: width 0.1s ease-out;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Horizontal Mouth Openness -->
+                        <div class="feedback-item">
+                            <div style="display:flex; justify-content:space-between; font-size:0.9rem; color:#ccc;">
+                                <span>口の横幅 (Horizontal)</span>
+                                <span id="val-horizontal" style="font-weight:bold;">0%</span>
+                            </div>
+                            <div class="progress-bg" style="width:100%; height:14px; background:#111; border-radius:7px; margin-top:5px; overflow:hidden; border:1px solid #444;">
+                                <div id="bar-horizontal" class="progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #4da6ff, #005ce6); transition: width 0.1s ease-out;"></div>
+                            </div>
+                        </div>
+
+                        <!-- Smile Tone (Mouth Corners) -->
+                        <div class="feedback-item">
+                            <div style="display:flex; justify-content:space-between; font-size:0.9rem; color:#ccc;">
+                                <span>口角挙上 (Smile Tone)</span>
+                                <span id="val-smile" style="font-weight:bold;">0%</span>
+                            </div>
+                            <div class="progress-bg" style="width:100%; height:14px; background:#111; border-radius:7px; margin-top:5px; overflow:hidden; border:1px solid #444;">
+                                <div id="bar-smile" class="progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #ff6a00, #ee0979); transition: width 0.1s ease-out;"></div>
+                            </div>
+                        </div>
+
+                        <div id="realtime-advice" style="margin-top:auto; font-size:0.95rem; font-weight:bold; color:#ffdd57; background:rgba(255, 221, 87, 0.1); padding:15px; border-radius:8px; text-align:center; border: 1px dashed rgba(255, 221, 87, 0.3);">
+                            口をしっかり動かして発声しましょう
+                        </div>
+                    </div>
+                </div>
 
             <!-- Analysis Panel -->
-            <div class="analysis-panel">
+            <div class="analysis-panel" style="margin-top: 10px;">
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <div class="chart-title">事後分析: 音響とフォームの関連性アドバイス</div>
+                    <div id="offline-advice-container" style="padding: 15px; color: #ddd; font-size: 1rem; line-height:1.6; background:#222; border-radius:8px;">
+                        ※ 「録音を音響分析する」を実行すると、発声中の口のフォームと音響（フォルマント）を統合した総合的なフィードバックがここに表示されます。
+                    </div>
+                </div>
                 <div class="chart-card">
                     <div class="chart-title">音声のスペクトル</div>
                     <canvas id="spectrumCanvas" class="chart-canvas"></canvas>
@@ -152,10 +205,57 @@
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas(); // Initial call
 
+            // Check Recording start/stop to reset history
+            const originalStartAnalysisSession = demo.startAnalysisSession.bind(demo);
+            demo.startAnalysisSession = async () => {
+                window.formHistory = [];
+                await originalStartAnalysisSession();
+            };
+
             // Handle Offline Analysis Result
             demo.onAnalysisResult = (result) => {
                 const spectrumCanvas = document.getElementById('spectrumCanvas');
                 const vowelCanvas = document.getElementById('vowelCanvas');
+                const offlineAdviceContainer = document.getElementById('offline-advice-container');
+
+                // --- Generate Offline Advice ---
+                if (offlineAdviceContainer && window.formHistory && window.formHistory.length > 0) {
+                    // Calc averages
+                    let sumV = 0, sumH = 0, sumS = 0;
+                    for (let f of window.formHistory) {
+                        sumV += f.v; sumH += f.h; sumS += f.s;
+                    }
+                    const avgV = sumV / window.formHistory.length;
+                    const avgH = sumH / window.formHistory.length;
+                    const avgS = sumS / window.formHistory.length;
+
+                    let adviceHtml = `<div style="margin-bottom: 10px;"><strong>【フォーム分析結果】</strong><br>`;
+                    adviceHtml += `平均の縦開き: <span style="color:#4dff4d">${avgV.toFixed(1)}%</span> | `;
+                    adviceHtml += `平均の横開き: <span style="color:#4da6ff">${avgH.toFixed(1)}%</span> | `;
+                    adviceHtml += `平均スマイル: <span style="color:#ff4dff">${avgS.toFixed(1)}%</span></div>`;
+
+                    adviceHtml += `<strong>【総合アドバイス】</strong><br><ul style="margin-top:5px; padding-left:20px;">`;
+                    
+                    if (result.centroid && result.centroid < 1000) {
+                        adviceHtml += `<li>🗣️ 声の重心が低め（${result.centroid.toFixed(0)}Hz）です。`;
+                        if (avgS < 40) {
+                            adviceHtml += `口角（スマイルトーン）を上げて発声すると、抜けの良い明るい声になります。</li>`;
+                        } else {
+                            adviceHtml += `口角は保てているので、息のスピードを上げてみましょう。</li>`;
+                        }
+                    } else if (result.centroid) {
+                        adviceHtml += `<li>🗣️ 声の重心は良好（${result.centroid.toFixed(0)}Hz）で、明るい声質が出ています。</li>`;
+                    }
+
+                    if (avgV < 30) {
+                        adviceHtml += `<li>👄 全体的に口の縦の開きが小さめです。「あ」「お」などの母音で、あごをしっかり下げる意識を持ちましょう。</li>`;
+                    } else {
+                        adviceHtml += `<li>👄 口の開閉（縦）はしっかりと行えています！</li>`;
+                    }
+                    adviceHtml += `</ul>`;
+
+                    offlineAdviceContainer.innerHTML = adviceHtml;
+                }
 
                 // 1. Viz LTAS on Spectrum Canvas
                 if (spectrumCanvas && result.ltas) {
@@ -398,6 +498,9 @@
             }
             analysisLoop();
 
+            // Initialize Form History
+            window.formHistory = [];
+
             // Define Drawing Logic
             demo.drawResults = (results) => {
                 const canvasCtx = demo.canvasCtx;
@@ -420,16 +523,179 @@
                     canvasCtx.fillRect(0, 0, w, h);
                 }
 
-                // Draw Landmarks
-                if (results.multiFaceLandmarks) {
-                    for (const landmarks of results.multiFaceLandmarks) {
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_TESSELATION, { color: '#C0C0C070', lineWidth: 1 });
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYE, { color: '#FF3030', lineWidth: 2 });
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_RIGHT_EYEBROW, { color: '#FF3030', lineWidth: 2 });
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYE, { color: '#30FF30', lineWidth: 2 });
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_LEFT_EYEBROW, { color: '#30FF30', lineWidth: 2 });
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_FACE_OVAL, { color: '#E0E0E0', lineWidth: 2 });
-                        drawConnectors(canvasCtx, landmarks, FACEMESH_LIPS, { color: '#E0E0E0', lineWidth: 2 });
+                // Draw Landmarks and Analyze Form
+                if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
+                    const landmarks = results.multiFaceLandmarks[0];
+                    
+                    // --- Realtime Form Analysis ---
+                    const dist = (p1, p2) => Math.sqrt(Math.pow(p1.x - p2.x, 2) + Math.pow(p1.y - p2.y, 2));
+
+                    const UPPER_LIP = 13;
+                    const LOWER_LIP = 14;
+                    const LEFT_CORNER = 61;
+                    const RIGHT_CORNER = 291;
+                    const FACE_LEFT = 234;
+                    const FACE_RIGHT = 454;
+                    const FACE_TOP = 10;
+                    const FACE_BOTTOM = 152;
+
+                    const faceWidth = dist(landmarks[FACE_LEFT], landmarks[FACE_RIGHT]);
+                    const faceHeight = dist(landmarks[FACE_TOP], landmarks[FACE_BOTTOM]);
+                    
+                    const mouthWidth = dist(landmarks[LEFT_CORNER], landmarks[RIGHT_CORNER]);
+                    const mouthHeight = dist(landmarks[UPPER_LIP], landmarks[LOWER_LIP]);
+
+                    const normWidth = mouthWidth / faceWidth;
+                    const normHeight = mouthHeight / faceHeight; // 縦は顔の高さを基準に
+
+                    // Calculate Percentages (調整された計算式)
+                    let hPercent = ((normWidth - 0.2) / 0.25) * 100;
+                    let vPercent = (normHeight / 0.25) * 100;
+
+                    const lipCenterY = (landmarks[UPPER_LIP].y + landmarks[LOWER_LIP].y) / 2;
+                    const cornersY = (landmarks[LEFT_CORNER].y + landmarks[RIGHT_CORNER].y) / 2;
+                    const smileValue = (lipCenterY - cornersY) / faceHeight;
+                    let sPercent = ((smileValue + 0.02) / 0.05) * 100; 
+
+                    hPercent = Math.max(0, Math.min(100, hPercent));
+                    vPercent = Math.max(0, Math.min(100, vPercent));
+                    sPercent = Math.max(0, Math.min(100, sPercent));
+
+                    // 開口面積のダイナミクス(変化率)を計算
+                    const currentArea = hPercent * vPercent; // max 10000
+                    if (!window.areaBuffer) window.areaBuffer = [];
+                    window.areaBuffer.push(currentArea);
+                    if (window.areaBuffer.length > 30) window.areaBuffer.shift(); // 過去30フレーム(約1秒)を保持
+
+                    let areaMax = 0, areaMin = 10000;
+                    for (let a of window.areaBuffer) {
+                        if (a > areaMax) areaMax = a;
+                        if (a < areaMin) areaMin = a;
+                    }
+                    const areaDiff = areaMax - areaMin; // 面積の変動幅
+
+                    // Update UI via DOM
+                    const updateUI = () => {
+                        document.getElementById('bar-horizontal').style.width = `${hPercent}%`;
+                        document.getElementById('val-horizontal').textContent = `${hPercent.toFixed(0)}%`;
+                        
+                        document.getElementById('bar-vertical').style.width = `${vPercent}%`;
+                        document.getElementById('val-vertical').textContent = `${vPercent.toFixed(0)}%`;
+
+                        document.getElementById('bar-smile').style.width = `${sPercent}%`;
+                        document.getElementById('val-smile').textContent = `${sPercent.toFixed(0)}%`;
+
+                        const adviceEl = document.getElementById('realtime-advice');
+                        
+                        // 動的フィードバックのマージン（状態保持）管理
+                        if (!window.adviceState) {
+                            window.adviceState = {
+                                text: "分析中...",
+                                color: "#ccc",
+                                borderColor: "rgba(204, 204, 204, 0.3)",
+                                type: "init",
+                                lastChangeTime: Date.now()
+                            };
+                        }
+
+                        const now = Date.now();
+                        const timeSinceLastChange = now - window.adviceState.lastChangeTime;
+
+                        // 次の状態を決定するための評価
+                        let nextType = "neutral";
+                        if (window.areaBuffer.length < 10) {
+                            nextType = "init";
+                        } else if (areaDiff > 3000) {
+                            nextType = "dynamic";
+                        } else if (sPercent > 75 && areaDiff < 1500) {
+                            nextType = "smile";
+                        } else if (areaDiff < 1000) {
+                            nextType = "small";
+                        }
+
+                        // 状態のヒステリシス（閾値マージン）と時間的マージン（最低2.5秒間は保持）
+                        let shouldChange = false;
+
+                        if (timeSinceLastChange > 2500) {
+                            // 2.5秒以上経過していれば、新しい状態への遷移を許可する
+                            // ただし、境界でのバタつき（チャタリング）を防ぐための閾値マージンを設ける
+                            if (window.adviceState.type === "dynamic" && areaDiff > 2000) {
+                                // 一度dynamicになったら、2000を下回るまではdynamicを維持（マージン）
+                                nextType = "dynamic";
+                            } else if (window.adviceState.type === "small" && areaDiff < 1500 && sPercent < 70) {
+                                // 一度smallになったら、1500を超えるかスマイルになるまでsmallを維持
+                                nextType = "small";
+                            }
+                            
+                            if (nextType !== window.adviceState.type) {
+                                shouldChange = true;
+                            }
+                        }
+
+                        if (shouldChange) {
+                            window.adviceState.type = nextType;
+                            window.adviceState.lastChangeTime = now;
+                            
+                            switch (nextType) {
+                                case "dynamic":
+                                    window.adviceState.text = "素晴らしい！唇がダイナミックによく動いています✨";
+                                    window.adviceState.color = "#4dff4d";
+                                    window.adviceState.borderColor = "rgba(77, 255, 77, 0.5)";
+                                    break;
+                                case "smile":
+                                    window.adviceState.text = "スマイルトーンをキープできています！";
+                                    window.adviceState.color = "#ff4dff";
+                                    window.adviceState.borderColor = "rgba(255, 77, 255, 0.5)";
+                                    break;
+                                case "small":
+                                    window.adviceState.text = "口の動きが小さいようです。大げさに動かしてみましょう！";
+                                    window.adviceState.color = "#ffdd57";
+                                    window.adviceState.borderColor = "rgba(255, 221, 87, 0.3)";
+                                    break;
+                                case "neutral":
+                                    window.adviceState.text = "その調子で発声しましょう";
+                                    window.adviceState.color = "#4da6ff";
+                                    window.adviceState.borderColor = "rgba(77, 166, 255, 0.3)";
+                                    break;
+                                case "init":
+                                    window.adviceState.text = "分析中...";
+                                    window.adviceState.color = "#ccc";
+                                    window.adviceState.borderColor = "rgba(204, 204, 204, 0.3)";
+                                    break;
+                            }
+                        }
+
+                        // UI適用
+                        adviceEl.textContent = window.adviceState.text;
+                        adviceEl.style.color = window.adviceState.color;
+                        adviceEl.style.borderColor = window.adviceState.borderColor;
+                    };
+                    
+                    // Ensure UI updates run outside of canvas context state issues
+                    requestAnimationFrame(updateUI);
+
+                    // Record history during recording or analysis
+                    if (demo.isRecording || demo.isAnalyzingRealtime) {
+                        window.formHistory.push({
+                            time: Date.now(),
+                            v: vPercent,
+                            h: hPercent,
+                            s: sPercent
+                        });
+                    }
+
+                        // --- Draw Landmarks ---
+                        for (const lmarks of results.multiFaceLandmarks) {
+                            drawConnectors(canvasCtx, lmarks, FACEMESH_TESSELATION, { color: '#C0C0C070', lineWidth: 1 });
+                            // drawConnectors(canvasCtx, lmarks, FACEMESH_RIGHT_EYE, { color: '#FF3030', lineWidth: 2 });
+                            // drawConnectors(canvasCtx, lmarks, FACEMESH_RIGHT_EYEBROW, { color: '#FF3030', lineWidth: 2 });
+                            // drawConnectors(canvasCtx, lmarks, FACEMESH_LEFT_EYE, { color: '#30FF30', lineWidth: 2 });
+                            // drawConnectors(canvasCtx, lmarks, FACEMESH_LEFT_EYEBROW, { color: '#30FF30', lineWidth: 2 });
+                            drawConnectors(canvasCtx, lmarks, FACEMESH_FACE_OVAL, { color: '#E0E0E0', lineWidth: 2 });
+                        
+                        // Highlight Lips differently based on openness
+                        const lipColor = (vPercent > 50 || hPercent > 50) ? '#ff4dff' : '#E0E0E0';
+                        drawConnectors(canvasCtx, lmarks, FACEMESH_LIPS, { color: lipColor, lineWidth: 3 });
                     }
                 }
                 canvasCtx.restore();
