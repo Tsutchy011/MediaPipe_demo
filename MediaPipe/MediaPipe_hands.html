@@ -6,24 +6,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hand Tracking Analysis - MediaPipe Demo</title>
 
-    <!-- External Libs -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js"
-        crossorigin="anonymous"></script>
+    <!-- External Libs (描画ユーティリティのみ。手の推定は tasks-vision をモジュールで読み込む) -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"
         crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
     <!-- Custom Styles -->
     <link rel="stylesheet" href="css/demo_style.css">
 
     <!-- Local Logic (Loaded as Globals) -->
-    <script src="js/DataRecorder.js"></script>
-    <script src="js/MediaRecorder.js"></script>
-    <script src="js/AudioAnalyzer.js"></script>
-    <script src="js/CameraManager.js"></script>
-    <script src="js/TutorialManager.js"></script>
-    <script src="js/DemoCore.js"></script>
+    <script src="js/DataRecorder.js?v=2"></script>
+    <script src="js/MediaRecorder.js?v=2"></script>
+    <script src="js/AudioAnalyzer.js?v=2"></script>
+    <script src="js/CameraManager.js?v=2"></script>
+    <script src="js/TutorialManager.js?v=2"></script>
+    <script src="js/DemoCore.js?v=3"></script>
+    <script src="js/SessionTrend.js?v=1"></script>
+    <script src="js/HandFormAnalyzer.js?v=4"></script>
+    <script src="js/HandPerformance.js?v=2"></script>
+    <script src="js/PostureAnalyzer.js?v=1"></script>
+    <script src="js/MotionGuide.js?v=1"></script>
 
     <style>
         /* Tutorial Styles */
@@ -34,6 +35,42 @@
         .tutorial-popup {
             z-index: 10000;
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Form Settings Panel */
+        .form-hint {
+            font-size: 0.7rem;
+            color: #ccc;
+            margin-bottom: 8px;
+            line-height: 1.4;
+        }
+
+        .form-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            font-size: 0.8rem;
+        }
+
+        .form-row label {
+            flex-shrink: 0;
+        }
+
+        .form-row input[type="range"] {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .mamushi-counts {
+            font-size: 0.75rem;
+            background: #1a1a1a;
+            border-radius: 4px;
+            padding: 6px 8px;
+            margin: 6px 0;
+            line-height: 1.6;
+            color: #ddd;
+            white-space: pre-line;
         }
     </style>
 </head>
@@ -60,6 +97,151 @@
             </div>
 
             <div class="control-group">
+                <div class="group-title">レッスンモード</div>
+                <select id="lesson-mode-select" class="form-select" style="width:100%; padding: 8px; font-size: 1rem; margin-bottom: 5px; border-radius: 4px; background: #444; color: white; border: none;">
+                    <option value="none">通常表示</option>
+                    <option value="fingering">打鍵×運指 (どの指で弾いた?)</option>
+                    <option value="wrist">手首のしなやかさ</option>
+                    <option value="guide">お手本をなぞる (手首)</option>
+                    <option value="form">フォームチェック (まむし指・試験的)</option>
+                    <option value="posture">姿勢チェック (肘・体幹の傾向)</option>
+                    <option value="free">フリートレーニング (軌跡)</option>
+                </select>
+                <div id="mode-description" style="font-size: 0.8rem; opacity: 0.8; margin-top: 5px; line-height: 1.3;">
+                    手の動きを追跡する基本モードです。
+                </div>
+
+                <!-- Form Check Settings -->
+                <div id="form-settings" style="display: none; margin-top: 10px; background: #222; padding: 10px; border-radius: 4px;">
+                    <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 5px;">まむし指検知 (3D角度解析)</div>
+                    <div class="form-hint">
+                        「反り」(DIPが逆に曲がる) と「つぶれ」(第2関節PIPだけ強く曲がり第1関節DIPが伸びるZ字型) の2つのルールで検知します。<br>
+                        「基準を記録」で自分の良いフォームを登録すると、しきい値があなたの手に合わせて調整されます（未登録でも動作します）。<br>
+                        ※カメラは手を<b>真横〜斜め横</b>から映してください。下の「関節角度モニター」で、わざとまむし指を作った時にDIPの線が下がるかを確認できます。<br>
+                        単眼カメラでの推定には限界があるため、瞬間ごとの判定よりも下の「つぶれ傾向」のセッション内トレンド(セッション開始時と比べてどう変化しているか)を目安にしてください。
+                    </div>
+                    <button id="btn-calibrate" class="btn btn-primary" style="padding: 6px; font-size: 0.8rem;">基準を記録 (良いフォームで3秒)</button>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px;">
+                        <span id="form-learn-status" style="font-size: 0.7rem; color: #aaa;">未登録 (標準しきい値)</span>
+                        <button id="btn-learn-reset" class="btn" style="width:auto; padding: 2px 8px; font-size: 0.7rem; margin:0;">リセット</button>
+                    </div>
+                    <div class="form-row">
+                        <label for="sensitivity-slider">感度</label>
+                        <input type="range" id="sensitivity-slider" min="3" max="15" step="1" value="8">
+                        <span id="sensitivity-value" style="width: 2.5em; text-align: right;">-8°</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="gating-select">判定タイミング</label>
+                        <select id="gating-select" style="flex:1; padding: 4px; border-radius: 4px; background: #444; color: white; border: none;">
+                            <option value="always">常時</option>
+                            <option value="audio">打鍵時のみ (音で検出)</option>
+                        </select>
+                    </div>
+                    <label class="checkbox-label" style="font-size: 0.8rem;"><input type="checkbox" id="check-show-angles" checked> 関節角度を表示</label>
+                    <label class="checkbox-label" style="font-size: 0.8rem;"><input type="checkbox" id="check-thumb"> 親指も判定 (試験的)</label>
+                    <div class="form-row">
+                        <label for="monitor-hand">角度モニター</label>
+                        <select id="monitor-hand" style="flex:1; padding: 4px; border-radius: 4px; background: #444; color: white; border: none;">
+                            <option value="Right">右手</option>
+                            <option value="Left">左手</option>
+                        </select>
+                        <select id="monitor-finger" style="flex:1; padding: 4px; border-radius: 4px; background: #444; color: white; border: none;">
+                            <option value="index">人差し指</option>
+                            <option value="middle">中指</option>
+                            <option value="ring">薬指</option>
+                            <option value="pinky">小指</option>
+                            <option value="thumb">親指</option>
+                        </select>
+                    </div>
+                    <div id="mamushi-counts" class="mamushi-counts">検知回数: まだありません</div>
+                    <button id="btn-count-reset" class="btn" style="padding: 4px; font-size: 0.7rem; margin:0;">カウントをリセット</button>
+                </div>
+
+                <!-- Posture Settings -->
+                <div id="posture-settings" style="display: none; margin-top: 10px; background: #222; padding: 10px; border-radius: 4px;">
+                    <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 5px;">姿勢チェック (肘・体幹)</div>
+                    <div class="form-hint">
+                        肩・肘・手首・腰といった大きな骨格点を追跡し、「肘が肩〜手首の直線からどれだけズレているか」と「体幹の傾き」を計測します。手指の細かい関節より単眼カメラでも安定して追跡しやすい部位です。<br>
+                        数値そのものに正解・不正解はありません。<b>自分のセッション内での変化(増えているか/減っているか)</b>を見る指標です。<br>
+                        ※カメラは<b>横〜斜め横</b>から、上半身と鍵盤の両方が入るように映してください。
+                    </div>
+                    <div id="posture-status" style="font-size: 0.7rem; color: #aaa; margin-bottom: 6px;">姿勢モデルの準備中...</div>
+                    <div id="posture-stats" class="mamushi-counts">姿勢を映すと計測が始まります</div>
+                    <button id="btn-posture-trend-reset" class="btn" style="padding: 4px; font-size: 0.7rem; margin:0;">トレンドをリセット</button>
+                </div>
+
+                <!-- Fingering (Keystroke) Settings -->
+                <div id="fingering-settings" style="display: none; margin-top: 10px; background: #222; padding: 10px; border-radius: 4px;">
+                    <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 5px;">打鍵×運指の設定</div>
+                    <div class="form-hint">
+                        指先の下降の動きから「どの指が打鍵したか」を推定します。<br>
+                        「音声+動き」にするとマイクの打鍵音と照合して精度が上がります(推奨)。指番号は 1=親指〜5=小指。
+                    </div>
+                    <div class="form-row">
+                        <label for="strike-source">検出ソース</label>
+                        <select id="strike-source" style="flex:1; padding: 4px; border-radius: 4px; background: #444; color: white; border: none;">
+                            <option value="motion">動きのみ</option>
+                            <option value="audio">音声+動き (推奨)</option>
+                        </select>
+                    </div>
+                    <div class="form-row">
+                        <label for="strike-sens">感度</label>
+                        <input type="range" id="strike-sens" min="0.5" max="3" step="0.1" value="1.2">
+                        <span id="strike-sens-value" style="width: 2.5em; text-align: right;">1.2</span>
+                    </div>
+                    <div id="strike-stats" class="mamushi-counts">打鍵はまだありません</div>
+                    <button id="btn-strike-reset" class="btn" style="padding: 4px; font-size: 0.7rem; margin:0;">統計をリセット</button>
+                </div>
+
+                <!-- Wrist Suppleness Settings -->
+                <div id="wrist-settings" style="display: none; margin-top: 10px; background: #222; padding: 10px; border-radius: 4px;">
+                    <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 5px;">手首のしなやかさ</div>
+                    <div class="form-hint">
+                        演奏中の手首の高さの変化量(動きの量)から、しなやかさを100点で評価します。<br>
+                        手首を固めず、フレーズに合わせて自然に上下させると高得点になります。
+                    </div>
+                    <div id="wrist-stats" class="mamushi-counts">手を映すと評価が始まります</div>
+                </div>
+
+                <!-- Motion Guide (お手本をなぞる) Settings -->
+                <div id="guide-settings" style="display: none; margin-top: 10px; background: #222; padding: 10px; border-radius: 4px;">
+                    <div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 5px;">お手本をなぞる</div>
+                    <div class="form-hint">
+                        先生の手首の動きを数秒間記録し、その軌跡を画面に残します。生徒は金色のゴーストを追いかけるように手首を動かしてください。<br>
+                        アプリが「正しい角度」を判定するのではなく、<b>お手本そのものが基準</b>になります。両手が映っていれば両手とも記録します。
+                    </div>
+                    <div class="form-row">
+                        <label for="guide-duration">記録の長さ</label>
+                        <input type="range" id="guide-duration" min="3" max="10" step="1" value="5">
+                        <span id="guide-duration-value" style="width: 2.5em; text-align: right;">5秒</span>
+                    </div>
+                    <button id="btn-guide-record" class="btn btn-primary" style="padding: 6px; font-size: 0.8rem;">お手本を記録 (3秒後に開始)</button>
+                    <div id="guide-status" style="font-size: 0.7rem; color: #aaa; margin-bottom: 8px;">お手本はまだありません</div>
+
+                    <button id="btn-guide-play" class="btn" style="padding: 6px; font-size: 0.8rem;" disabled>お手本を再生</button>
+                    <div class="form-row">
+                        <label for="guide-speed">再生速度</label>
+                        <input type="range" id="guide-speed" min="0.5" max="1" step="0.1" value="1">
+                        <span id="guide-speed-value" style="width: 2.5em; text-align: right;">1.0x</span>
+                    </div>
+                    <div class="form-row">
+                        <label for="guide-anchor">位置合わせ</label>
+                        <select id="guide-anchor" style="flex:1; padding: 4px; border-radius: 4px; background: #444; color: white; border: none;">
+                            <option value="absolute">そのまま重ねる</option>
+                            <option value="aligned">手の位置に合わせる</option>
+                        </select>
+                    </div>
+                    <div id="guide-stats" class="mamushi-counts">お手本を記録して再生してください</div>
+                    <div style="display:flex; gap:5px;">
+                        <button id="btn-guide-export" class="btn" style="flex:1; padding: 4px; font-size: 0.7rem; margin:0;" disabled>書き出し</button>
+                        <button id="btn-guide-import" class="btn" style="flex:1; padding: 4px; font-size: 0.7rem; margin:0;">読み込み</button>
+                        <button id="btn-guide-clear" class="btn" style="flex:1; padding: 4px; font-size: 0.7rem; margin:0;">消す</button>
+                    </div>
+                    <input type="file" id="guide-file" accept="application/json,.json" style="display:none;">
+                </div>
+            </div>
+
+            <div class="control-group">
                 <div class="group-title">録画コントロール</div>
                 <button id="btn-record" class="btn btn-primary">録画開始</button>
                 <div style="display:flex; gap:5px; margin-top:5px;">
@@ -77,31 +259,62 @@
                 <button id="btn-analysis-download" class="btn" style="margin-top:5px;" disabled>音声保存 (WAV)</button>
             </div>
 
-
-
             <div class="control-group">
                 <div class="group-title">設定</div>
                 <label class="checkbox-label"><input type="checkbox" id="check-mirror" checked> 左右反転 (ミラー)</label>
                 <label class="checkbox-label"><input type="checkbox" id="check-image" checked> カメラ映像を表示</label>
+                <label class="checkbox-label"><input type="checkbox" id="check-landmarks" checked> 手のランドマークを表示</label>
+                <label class="checkbox-label"><input type="checkbox" id="check-audio-graph" checked> 音声グラフを表示</label>
             </div>
         </div>
 
         <!-- Main Content -->
         <div class="main-content">
             <!-- Visualizer -->
-            <div class="visualizer-area">
-                <div id="loading" class="loading-overlay">カメラ起動中...</div>
+            <div class="visualizer-area" style="position: relative;">
+                <div id="loading" class="loading-overlay">AIモデル読込中...</div>
                 <video id="input_video" class="input_video" autoplay playsinline muted></video>
                 <canvas id="output_canvas" class="output_canvas"></canvas>
+                <!-- Piano Guide Overlay -->
+                <div id="piano-guide" class="piano-guide hidden">
+                    <div class="guide-text">この枠に鍵盤が収まるようにカメラを調整してください</div>
+                    <div class="guide-frame"></div>
+                </div>
+                <!-- Alert Overlay -->
+                <div id="form-alert" class="form-alert hidden">指の第1関節につぶれの兆候があります</div>
             </div>
 
             <!-- Analysis Panel -->
             <div class="analysis-panel">
-                <div class="chart-card">
+                <div class="chart-card" id="card-angle-monitor">
+                    <div class="chart-title">関節角度モニター (PIP / DIP)</div>
+                    <canvas id="angleMonitorCanvas"></canvas>
+                </div>
+                <div class="chart-card" id="card-mamushi-trend">
+                    <div class="chart-title">つぶれ傾向 (セッション内トレンド)</div>
+                    <canvas id="mamushiTrendCanvas"></canvas>
+                </div>
+                <div class="chart-card hidden" id="card-strike-timeline">
+                    <div class="chart-title">打鍵タイムライン (指番号)</div>
+                    <canvas id="strikeTimelineCanvas"></canvas>
+                </div>
+                <div class="chart-card hidden" id="card-wrist-monitor">
+                    <div class="chart-title">手首モニター (しなやかさスコア)</div>
+                    <canvas id="wristMonitorCanvas"></canvas>
+                </div>
+                <div class="chart-card hidden" id="card-posture-monitor">
+                    <div class="chart-title">姿勢モニター (肘のズレ・体幹の傾き)</div>
+                    <canvas id="postureMonitorCanvas"></canvas>
+                </div>
+                <div class="chart-card hidden" id="card-guide-monitor">
+                    <div class="chart-title">お手本 vs 自分 (手首の高さ)</div>
+                    <canvas id="guideMonitorCanvas"></canvas>
+                </div>
+                <div class="chart-card hidden" id="card-spectrum">
                     <div class="chart-title">オーディオスペクトル</div>
                     <canvas id="spectrumCanvas"></canvas>
                 </div>
-                <div class="chart-card">
+                <div class="chart-card hidden" id="card-waveform">
                     <div class="chart-title">オーディオ波形</div>
                     <canvas id="waveformCanvas"></canvas>
                 </div>
@@ -110,8 +323,19 @@
     </div>
 
     <!-- Application Logic -->
-    <script>
-        window.addEventListener('load', () => {
+    <script type="module">
+        import { FilesetResolver, HandLandmarker, PoseLandmarker } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/vision_bundle.mjs";
+
+        // 手の骨格接続 (旧 hands.js の HAND_CONNECTIONS 相当)
+        const HAND_CONNECTIONS = [
+            [0, 1], [1, 2], [2, 3], [3, 4],
+            [0, 5], [5, 6], [6, 7], [7, 8],
+            [5, 9], [9, 10], [10, 11], [11, 12],
+            [9, 13], [13, 14], [14, 15], [15, 16],
+            [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]
+        ];
+
+        window.addEventListener('load', async () => {
             // Initialize elements
             const videoElement = document.getElementById('input_video');
             const canvasElement = document.getElementById('output_canvas');
@@ -119,10 +343,56 @@
 
             // Setup DemoCore (Logic)
             const demo = new DemoCore(videoElement, canvasElement);
+            window.demo = demo; // デバッグ用 (コンソールから状態確認できるように)
+
+            // まむし指検知エンジン (3D角度解析)
+            const formAnalyzer = new HandFormAnalyzer();
+            const formConfig = {
+                gating: 'always',      // 'always' | 'audio'
+                showAngles: true,
+                includeThumb: false
+            };
+            const formGate = { open: true, lastPeak: -Infinity };
+            const monitorConfig = { hand: 'Right', finger: 'index' };
+            const angleHistory = []; // 角度モニター用リングバッファ {t, pip, dip, bad}
+
+            // 打鍵×運指モード
+            const strikeDetector = new KeystrokeDetector();
+            const strikeConfig = { source: 'motion' }; // 'motion' | 'audio'
+            const strikeGate = { prevVol: 0, lastOnset: -Infinity };
+            const recentFlashes = []; // 打鍵フラッシュ表示用
+            strikeDetector.onStrike = (s) => {
+                recentFlashes.push(s);
+                while (recentFlashes.length > 20) recentFlashes.shift();
+            };
+
+            // 手首のしなやかさモード
+            const wristAnalyzer = new WristAnalyzer();
+            const wristTrails = {};  // label -> [{t,x,y}] 軌跡表示用
+            const wristLatest = {};  // label -> 最新の評価結果
+            const wristHistory = {}; // label -> [{t, y, score}] チャート用
+
+            // 姿勢チェックモード (肘の直線からのズレ・体幹の傾き)
+            const postureAnalyzer = new PostureAnalyzer();
+            const postureStatusEl = document.getElementById('posture-status');
+
+            // お手本をなぞるモード (先生の手首の動きを記録 → 生徒が追従)
+            const motionGuide = new MotionGuide();
+            window.motionGuide = motionGuide; // デバッグ用 (記録したお手本をコンソールから確認できるように)
+            const guideTrails = {}; // label -> [{t,x,y}] 生徒の直近の軌跡
 
             // Sync Settings on Load
             demo.config.mirror = document.getElementById('check-mirror').checked;
             demo.config.showImage = document.getElementById('check-image').checked;
+            demo.config.showLandmarks = document.getElementById('check-landmarks').checked;
+
+            // 音響分析プロット領域はデフォルト非表示。「分析開始」を押した時だけ表示する
+            demo.onAnalysisStart = () => {
+                const cardSpectrum = document.getElementById('card-spectrum');
+                const cardWaveform = document.getElementById('card-waveform');
+                if (cardSpectrum) cardSpectrum.classList.remove('hidden');
+                if (cardWaveform) cardWaveform.classList.remove('hidden');
+            };
 
             // Handle Offline Analysis Result
             demo.onAnalysisResult = (result) => {
@@ -130,9 +400,6 @@
                 const spectrumCanvas = document.getElementById('spectrumCanvas');
                 if (spectrumCanvas && result.ltas) {
                     const ctx = spectrumCanvas.getContext('2d');
-                    // Overlay or Clear?
-                    // Let's draw it in a different color (Yellow) overlaying the real-time or just show it static.
-                    // Since analysis stops real-time loop usually (or runs parallel), let's clear and draw static.
                     ctx.fillStyle = '#222';
                     ctx.fillRect(0, 0, spectrumCanvas.width, spectrumCanvas.height);
 
@@ -142,10 +409,7 @@
                     ctx.fillStyle = '#ffcc00'; // Gold for LTAS
 
                     for (let i = 0; i < data.length; i++) {
-                        // Magnitude might be different scaling than byte freq data [0-255].
-                        // FFT returns raw magnitude. Need log scaling or auto-scale.
-                        // Simple auto-scale for demo:
-                        const h = (data[i] / 50) * spectrumCanvas.height; // Arbitrary scale factor
+                        const h = (data[i] / 50) * spectrumCanvas.height;
                         ctx.fillRect(x, spectrumCanvas.height - h, barWidth, h);
                         x += barWidth + 1;
                     }
@@ -155,7 +419,6 @@
                     ctx.font = "12px Arial";
                     ctx.fillText("長期平均スペクトル (LTAS)", 10, 20);
 
-                    // Label Centroid
                     if (result.centroid) {
                         ctx.fillStyle = '#00ff00';
                         ctx.fillText("スペクトル重心: " + result.centroid.toFixed(0) + " Hz", 10, 40);
@@ -163,11 +426,688 @@
                 }
             };
 
+            // ミラー描画中でも文字が反転しないように描くヘルパー
+            function drawText(ctx, text, x, y, color, font) {
+                const w = canvasElement.width;
+                ctx.save();
+                if (demo.config.mirror) {
+                    ctx.scale(-1, 1);
+                    ctx.translate(-w, 0);
+                    x = w - x;
+                }
+                ctx.font = font || 'bold 16px "Noto Sans JP", Arial';
+                ctx.fillStyle = color || '#fff';
+                ctx.shadowColor = 'black';
+                ctx.shadowBlur = 4;
+                ctx.fillText(text, x, y);
+                ctx.restore();
+            }
+
+            const handJa = (label) => label === 'Right' ? '右手' : (label === 'Left' ? '左手' : '');
+
             // Define Drawing Logic
+            const traces = {};
+            demo.clearTraces = () => {
+                for (let k in traces) delete traces[k];
+                formAnalyzer.resetStates();
+                recentFlashes.length = 0;
+                for (const k in wristTrails) delete wristTrails[k];
+                for (const k in wristHistory) delete wristHistory[k];
+                for (const k in wristLatest) delete wristLatest[k];
+                postureAnalyzer.resetStates(); // セッショントレンドは保持し、フレーム間の平滑化状態のみリセット
+                motionGuide.resetFollow();     // 追従の評価状態のみリセット (お手本自体は残す)
+                for (const k in guideTrails) delete guideTrails[k];
+            };
+
+            // 検知回数パネルの更新（変化があった時のみDOM更新）
+            const countsEl = document.getElementById('mamushi-counts');
+            let lastCountsJson = '';
+            const FINGER_SHORT = { thumb: '親', index: '人', middle: '中', ring: '薬', pinky: '小' };
+            function updateCountsPanel() {
+                const counts = formAnalyzer.getCounts();
+                const json = JSON.stringify(counts);
+                if (json === lastCountsJson || !countsEl) return;
+                lastCountsJson = json;
+                const lines = [];
+                for (const handLabel of Object.keys(counts).sort()) {
+                    const parts = [];
+                    for (const name of ['thumb', 'index', 'middle', 'ring', 'pinky']) {
+                        if (counts[handLabel][name] != null) {
+                            parts.push(`${FINGER_SHORT[name]}:${counts[handLabel][name]}`);
+                        }
+                    }
+                    if (parts.length) lines.push(`${handJa(handLabel) || handLabel} ${parts.join(' ')}`);
+                }
+                countsEl.textContent = lines.length ? '検知回数\n' + lines.join('\n') : '検知回数: まだありません';
+            }
+
+            // 関節角度モニター: 選択した指の PIP/DIP 角度の時系列 + しきい値線
+            // わざとまむし指を作った時に DIP の線が下がるか(=信号が乗っているか)を目で確認できる
+            const monitorCanvas = document.getElementById('angleMonitorCanvas');
+            function drawAngleMonitor(now) {
+                if (!monitorCanvas) return;
+                const ctx = monitorCanvas.getContext('2d');
+                const W = monitorCanvas.width, H = monitorCanvas.height;
+                const m = { top: 18, right: 8, bottom: 6, left: 30 };
+                const gw = W - m.left - m.right, gh = H - m.top - m.bottom;
+                const yMin = -30, yMax = 90;
+                const windowMs = 10000; // 直近10秒
+
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, W, H);
+
+                const xOf = (t) => m.left + (1 - (now - t) / windowMs) * gw;
+                const yOf = (deg) => m.top + (yMax - deg) / (yMax - yMin) * gh;
+
+                // グリッド (30°毎)
+                ctx.strokeStyle = '#3a3a3a';
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.fillStyle = '#777';
+                ctx.font = '9px Arial';
+                ctx.textAlign = 'right';
+                for (let d = -30; d <= 90; d += 30) {
+                    const y = yOf(d);
+                    ctx.moveTo(m.left, y);
+                    ctx.lineTo(m.left + gw, y);
+                    ctx.fillText(d + '°', m.left - 3, y + 3);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 0°線
+                ctx.strokeStyle = '#666';
+                ctx.beginPath();
+                ctx.moveTo(m.left, yOf(0));
+                ctx.lineTo(m.left + gw, yOf(0));
+                ctx.stroke();
+
+                // しきい値線 (黄=つぶれ, 赤=反り)
+                const thr = formAnalyzer.getThresholds(monitorConfig.hand, monitorConfig.finger);
+                ctx.setLineDash([5, 4]);
+                ctx.strokeStyle = '#ffdd57';
+                ctx.beginPath();
+                ctx.moveTo(m.left, yOf(thr.enterFlat));
+                ctx.lineTo(m.left + gw, yOf(thr.enterFlat));
+                ctx.stroke();
+                ctx.strokeStyle = '#ff4d4d';
+                ctx.beginPath();
+                ctx.moveTo(m.left, yOf(thr.enterHyper));
+                ctx.lineTo(m.left + gw, yOf(thr.enterHyper));
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 検知区間の赤帯
+                ctx.fillStyle = 'rgba(255, 77, 77, 0.15)';
+                for (const s of angleHistory) {
+                    if (s.bad && now - s.t <= windowMs) ctx.fillRect(xOf(s.t) - 1, m.top, 2, gh);
+                }
+
+                // 折れ線 (PIP=水色, DIP=オレンジ)
+                const drawLine = (key, color) => {
+                    ctx.beginPath();
+                    let started = false;
+                    for (const s of angleHistory) {
+                        if (s[key] == null || now - s.t > windowMs) continue;
+                        const x = xOf(s.t);
+                        const y = yOf(Math.max(yMin, Math.min(yMax, s[key])));
+                        if (!started) { ctx.moveTo(x, y); started = true; }
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                };
+                drawLine('pip', '#00d4ff');
+                drawLine('dip', '#ff9f40');
+
+                // 凡例
+                ctx.font = '10px "Noto Sans JP", Arial';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#00d4ff';
+                ctx.fillText('PIP(第2関節)', m.left + 4, m.top - 6);
+                ctx.fillStyle = '#ff9f40';
+                ctx.fillText('DIP(第1関節)', m.left + 82, m.top - 6);
+                ctx.fillStyle = '#ffdd57';
+                ctx.fillText(`つぶれ<${Math.round(thr.enterFlat)}°`, m.left + gw - 106, m.top - 6);
+                ctx.fillStyle = '#ff4d4d';
+                ctx.fillText(`反り<${Math.round(thr.enterHyper)}°`, m.left + gw - 46, m.top - 6);
+
+                if (angleHistory.length === 0) {
+                    ctx.fillStyle = '#888';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('フォームチェック中に手を映すと角度が表示されます', W / 2, H / 2);
+                }
+            }
+
+            // つぶれ傾向モニター: セッション全体を通じた「判定した指のうちbadだった割合」の推移。
+            // 瞬間の断定的な判定ではなく、セッション開始時と直近を比べた相対的な変化を主役にする。
+            const mamushiTrendCanvas = document.getElementById('mamushiTrendCanvas');
+            function drawMamushiTrend(now) {
+                if (!mamushiTrendCanvas) return;
+                const ctx = mamushiTrendCanvas.getContext('2d');
+                const W = mamushiTrendCanvas.width, H = mamushiTrendCanvas.height;
+                const m = { top: 18, right: 8, bottom: 6, left: 32 };
+                const gw = W - m.left - m.right, gh = H - m.top - m.bottom;
+
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, W, H);
+
+                const trend = formAnalyzer.getTrend();
+                const buckets = trend.getBuckets();
+
+                if (buckets.length === 0) {
+                    ctx.fillStyle = '#888';
+                    ctx.textAlign = 'center';
+                    ctx.font = '10px "Noto Sans JP", Arial';
+                    ctx.fillText('フォームチェック中に手を映すとグラフが表示されます', W / 2, H / 2);
+                    return;
+                }
+
+                const t0 = buckets[0].t;
+                const span = Math.max(1000, now - t0);
+                const xOf = (t) => m.left + ((t - t0) / span) * gw;
+                const yOf = (v01) => m.top + (1 - Math.max(0, Math.min(1, v01))) * gh;
+
+                // グリッド (0-100%)
+                ctx.strokeStyle = '#3a3a3a';
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.fillStyle = '#777';
+                ctx.font = '9px Arial';
+                ctx.textAlign = 'right';
+                for (let p = 0; p <= 1; p += 0.5) {
+                    const y = yOf(p);
+                    ctx.moveTo(m.left, y);
+                    ctx.lineTo(m.left + gw, y);
+                    ctx.fillText(Math.round(p * 100) + '%', m.left - 3, y + 3);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.beginPath();
+                let started = false;
+                for (const b of buckets) {
+                    const x = xOf(b.t), y = yOf(b.avg);
+                    if (!started) { ctx.moveTo(x, y); started = true; }
+                    else ctx.lineTo(x, y);
+                }
+                ctx.strokeStyle = '#ff9f40';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                const s = trend.getSummary();
+                ctx.font = '10px "Noto Sans JP", Arial';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#ccc';
+                const text = s.ready
+                    ? `セッション開始比: ${s.deltaPct > 0 ? '+' : ''}${s.deltaPct.toFixed(0)}% (直近 ${Math.round(s.recent * 100)}%)`
+                    : 'データ収集中…(判定が1分×2区間ぶん必要です)';
+                ctx.fillText(text, m.left + 4, m.top - 6);
+            }
+
+            // 打鍵タイムライン: 直近8秒の打鍵を「手×指番号」の段に表示
+            const strikeCanvas = document.getElementById('strikeTimelineCanvas');
+            const STRIKE_ROWS = ['左5', '左4', '左3', '左2', '左1', '右1', '右2', '右3', '右4', '右5'];
+            const strikeRowIndex = (hand, finger) => hand === 'Left' ? 5 - finger : 4 + finger;
+            function drawStrikeTimeline(now) {
+                if (!strikeCanvas) return;
+                const ctx = strikeCanvas.getContext('2d');
+                const W = strikeCanvas.width, H = strikeCanvas.height;
+                const m = { top: 8, right: 8, bottom: 14, left: 26 };
+                const gw = W - m.left - m.right, gh = H - m.top - m.bottom;
+                const windowMs = 8000;
+
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, W, H);
+
+                const rowH = gh / 10;
+                ctx.font = '9px "Noto Sans JP", Arial';
+                for (let r = 0; r < 10; r++) {
+                    const y = m.top + r * rowH;
+                    if (r % 2 === 0) {
+                        ctx.fillStyle = r < 5 ? 'rgba(255, 159, 64, 0.08)' : 'rgba(0, 212, 255, 0.08)';
+                        ctx.fillRect(m.left, y, gw, rowH);
+                    }
+                    ctx.fillStyle = r < 5 ? '#ff9f40' : '#00d4ff';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(STRIKE_ROWS[r], m.left - 3, y + rowH / 2 + 3);
+                }
+
+                // 1秒グリッド
+                ctx.strokeStyle = '#3a3a3a';
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.fillStyle = '#777';
+                ctx.textAlign = 'center';
+                for (let s = 0; s <= 8; s++) {
+                    const x = m.left + (1 - s * 1000 / windowMs) * gw;
+                    ctx.moveTo(x, m.top);
+                    ctx.lineTo(x, m.top + gh);
+                    if (s > 0 && s % 2 === 0) ctx.fillText('-' + s + 's', x, H - 3);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // 打鍵ドット
+                for (const s of strikeDetector.strikes) {
+                    if (now - s.t > windowMs) continue;
+                    const x = m.left + (1 - (now - s.t) / windowMs) * gw;
+                    const y = m.top + (strikeRowIndex(s.hand, s.finger) + 0.5) * rowH;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 3.5, 0, 2 * Math.PI);
+                    ctx.fillStyle = s.hand === 'Left' ? '#ff9f40' : '#00d4ff';
+                    ctx.fill();
+                }
+
+                if (strikeDetector.strikes.length === 0) {
+                    ctx.fillStyle = '#888';
+                    ctx.textAlign = 'center';
+                    ctx.font = '10px "Noto Sans JP", Arial';
+                    ctx.fillText('打鍵するとここに表示されます', W / 2, H / 2);
+                }
+            }
+
+            const strikeStatsEl = document.getElementById('strike-stats');
+            let lastStrikeStatsText = '';
+            function updateStrikeStats() {
+                if (!strikeStatsEl) return;
+                const st = strikeDetector.getStats();
+                let text;
+                if (st.count === 0) {
+                    text = '打鍵はまだありません';
+                } else {
+                    const lines = [];
+                    let head = `打鍵 ${st.count}回`;
+                    if (st.bpm) head += ` | テンポ ~${Math.round(st.bpm)} BPM | ばらつき ${st.cv.toFixed(1)}%`;
+                    lines.push(head);
+                    const counts = strikeDetector.getCounts();
+                    for (const hand of Object.keys(counts).sort()) {
+                        const parts = [];
+                        for (let f = 1; f <= 5; f++) if (counts[hand][f]) parts.push(`${f}:${counts[hand][f]}`);
+                        if (parts.length) lines.push(`${handJa(hand) || hand} ${parts.join(' ')}`);
+                    }
+                    text = lines.join('\n');
+                }
+                if (text !== lastStrikeStatsText) {
+                    strikeStatsEl.textContent = text;
+                    lastStrikeStatsText = text;
+                }
+            }
+
+            // 手首モニター: しなやかさスコア(太線)と手首の高さ(細線)の時系列
+            const wristCanvas = document.getElementById('wristMonitorCanvas');
+            function drawWristMonitor(now) {
+                if (!wristCanvas) return;
+                const ctx = wristCanvas.getContext('2d');
+                const W = wristCanvas.width, H = wristCanvas.height;
+                const m = { top: 18, right: 8, bottom: 6, left: 26 };
+                const gw = W - m.left - m.right, gh = H - m.top - m.bottom;
+                const windowMs = 10000;
+
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, W, H);
+
+                // スコア軸 (0-100)
+                ctx.strokeStyle = '#3a3a3a';
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.fillStyle = '#777';
+                ctx.font = '9px Arial';
+                ctx.textAlign = 'right';
+                for (let v = 0; v <= 100; v += 25) {
+                    const y = m.top + (1 - v / 100) * gh;
+                    ctx.moveTo(m.left, y);
+                    ctx.lineTo(m.left + gw, y);
+                    ctx.fillText(v, m.left - 3, y + 3);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                const colors = { Right: '#00d4ff', Left: '#ff9f40' };
+                let any = false;
+                for (const label in wristHistory) {
+                    const hist = wristHistory[label].filter(p => now - p.t <= windowMs);
+                    if (hist.length < 2) continue;
+                    any = true;
+
+                    // 手首の高さ (細線, 窓内で正規化。上 = 手首が高い)
+                    let yMin = Infinity, yMax = -Infinity;
+                    for (const p of hist) { if (p.y < yMin) yMin = p.y; if (p.y > yMax) yMax = p.y; }
+                    const span = Math.max(1e-6, yMax - yMin);
+                    ctx.beginPath();
+                    hist.forEach((p, i) => {
+                        const x = m.left + (1 - (now - p.t) / windowMs) * gw;
+                        const y = m.top + ((p.y - yMin) / span) * gh;
+                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    });
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+
+                    // しなやかさスコア (太線)
+                    ctx.beginPath();
+                    let started = false;
+                    for (const p of hist) {
+                        if (p.score == null) continue;
+                        const x = m.left + (1 - (now - p.t) / windowMs) * gw;
+                        const y = m.top + (1 - Math.max(0, Math.min(100, p.score)) / 100) * gh;
+                        started ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+                        started = true;
+                    }
+                    ctx.strokeStyle = colors[label] || '#fff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // 凡例
+                ctx.font = '10px "Noto Sans JP", Arial';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#00d4ff';
+                ctx.fillText('右手スコア', m.left + 4, m.top - 6);
+                ctx.fillStyle = '#ff9f40';
+                ctx.fillText('左手スコア', m.left + 66, m.top - 6);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.fillText('細線 = 手首の高さ', m.left + 128, m.top - 6);
+
+                if (!any) {
+                    ctx.fillStyle = '#888';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('手を映すと評価が始まります', W / 2, H / 2);
+                }
+            }
+
+            const wristStatsEl = document.getElementById('wrist-stats');
+            let lastWristStatsText = '';
+            function updateWristStats() {
+                if (!wristStatsEl) return;
+                const lines = [];
+                for (const label of Object.keys(wristLatest).sort()) {
+                    const r = wristLatest[label];
+                    if (!r) continue;
+                    if (!r.ready || r.score == null) {
+                        lines.push(`${handJa(label) || label}: 計測中...`);
+                        continue;
+                    }
+                    const grade = r.score >= 70 ? 'しなやか◎' : (r.score >= 40 ? 'まずまず◯' : 'かたい△');
+                    lines.push(`${handJa(label) || label}: ${Math.round(r.score)}点 ${grade} (動きの量 ${Math.round(r.range01 * 100)})`);
+                }
+                const text = lines.length ? lines.join('\n') : '手を映すと評価が始まります';
+                if (text !== lastWristStatsText) {
+                    wristStatsEl.textContent = text;
+                    lastWristStatsText = text;
+                }
+            }
+
+            // 姿勢の骨格線描画: 肩-肘-手首、肩-腰を中立色(良し悪しの色分けなし)で描く
+            function drawPostureSkeleton(ctx, lm, w, h) {
+                const vis = (i) => !lm[i] || lm[i].visibility == null || lm[i].visibility >= 0.5;
+                const pt = (i) => ({ x: lm[i].x * w, y: lm[i].y * h });
+                ctx.strokeStyle = 'rgba(0, 212, 255, 0.85)';
+                ctx.fillStyle = '#00d4ff';
+                ctx.lineWidth = 3;
+                for (const s of postureAnalyzer.SIDES) {
+                    if (lm[s.shoulder] && lm[s.elbow] && lm[s.wrist] && vis(s.shoulder) && vis(s.elbow) && vis(s.wrist)) {
+                        const p0 = pt(s.shoulder), p1 = pt(s.elbow), p2 = pt(s.wrist);
+                        ctx.beginPath();
+                        ctx.moveTo(p0.x, p0.y);
+                        ctx.lineTo(p1.x, p1.y);
+                        ctx.lineTo(p2.x, p2.y);
+                        ctx.stroke();
+                        for (const p of [p0, p1, p2]) {
+                            ctx.beginPath();
+                            ctx.arc(p.x, p.y, 5, 0, 2 * Math.PI);
+                            ctx.fill();
+                        }
+                    }
+                    if (lm[s.shoulder] && lm[s.hip] && vis(s.shoulder) && vis(s.hip)) {
+                        const ps = pt(s.shoulder), ph = pt(s.hip);
+                        ctx.beginPath();
+                        ctx.moveTo(ps.x, ps.y);
+                        ctx.lineTo(ph.x, ph.y);
+                        ctx.stroke();
+                    }
+                }
+            }
+
+            const postureStatsEl = document.getElementById('posture-stats');
+            let lastPostureStatsText = '';
+            function fmtPostureTrend(summary, formatValue) {
+                if (!summary.ready) return 'データ収集中…';
+                const arrow = summary.direction === 'down' ? '↓' : (summary.direction === 'up' ? '↑' : '→');
+                const sign = summary.deltaPct > 0 ? '+' : '';
+                return `${arrow} ${sign}${summary.deltaPct.toFixed(0)}% (直近 ${formatValue(summary.recent)})`;
+            }
+            function updatePostureStats() {
+                if (!postureStatsEl) return;
+                const trends = postureAnalyzer.getTrends();
+                const elbowS = trends.elbow.getSummary();
+                const torsoS = trends.torso.getSummary();
+                const text = `肘のズレ傾向: ${fmtPostureTrend(elbowS, v => (v * 100).toFixed(0) + '%')}\n`
+                    + `体幹の傾き傾向: ${fmtPostureTrend(torsoS, v => v.toFixed(0) + '°')}`;
+                if (text !== lastPostureStatsText) {
+                    postureStatsEl.textContent = text;
+                    lastPostureStatsText = text;
+                }
+            }
+
+            // 姿勢モニター: セッション全体を通じた肘のズレ・体幹の傾きの推移(0-1に正規化して重ね描き)
+            const postureMonitorCanvas = document.getElementById('postureMonitorCanvas');
+            function drawPostureMonitor(now) {
+                if (!postureMonitorCanvas) return;
+                const ctx = postureMonitorCanvas.getContext('2d');
+                const W = postureMonitorCanvas.width, H = postureMonitorCanvas.height;
+                const m = { top: 18, right: 8, bottom: 6, left: 8 };
+                const gw = W - m.left - m.right, gh = H - m.top - m.bottom;
+
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, W, H);
+
+                const elbowBuckets = postureAnalyzer.elbowTrend.getBuckets();
+                const torsoBuckets = postureAnalyzer.torsoTrend.getBuckets();
+                const anyBuckets = elbowBuckets.length ? elbowBuckets : torsoBuckets;
+
+                if (!anyBuckets.length) {
+                    ctx.fillStyle = '#888';
+                    ctx.textAlign = 'center';
+                    ctx.font = '10px "Noto Sans JP", Arial';
+                    ctx.fillText('姿勢チェック中に上半身を映すとグラフが表示されます', W / 2, H / 2);
+                    return;
+                }
+
+                const t0 = anyBuckets[0].t;
+                const span = Math.max(1000, now - t0);
+                const xOf = (t) => m.left + ((t - t0) / span) * gw;
+                const elbowMax = 0.5; // 50%で頭打ち表示
+                const torsoMax = 45;  // 45°で頭打ち表示
+                const yOfNorm = (v01) => m.top + (1 - Math.max(0, Math.min(1, v01))) * gh;
+
+                ctx.strokeStyle = '#3a3a3a';
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                for (let f = 0; f <= 1; f += 0.25) {
+                    const y = yOfNorm(f);
+                    ctx.moveTo(m.left, y);
+                    ctx.lineTo(m.left + gw, y);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                const drawSeries = (buckets, maxVal, color) => {
+                    ctx.beginPath();
+                    let started = false;
+                    for (const b of buckets) {
+                        const x = xOf(b.t), y = yOfNorm(b.avg / maxVal);
+                        if (!started) { ctx.moveTo(x, y); started = true; }
+                        else ctx.lineTo(x, y);
+                    }
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                };
+                drawSeries(elbowBuckets, elbowMax, '#00d4ff');
+                drawSeries(torsoBuckets, torsoMax, '#ff9f40');
+
+                const elbowS = postureAnalyzer.elbowTrend.getSummary();
+                const torsoS = postureAnalyzer.torsoTrend.getSummary();
+                ctx.font = '10px "Noto Sans JP", Arial';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#00d4ff';
+                ctx.fillText('肘のズレ', m.left + 4, m.top - 6);
+                ctx.fillStyle = '#ff9f40';
+                ctx.fillText('体幹の傾き', m.left + 60, m.top - 6);
+                ctx.fillStyle = '#ccc';
+                const summaryText = (elbowS.ready || torsoS.ready)
+                    ? `開始比: 肘${elbowS.ready ? (elbowS.deltaPct > 0 ? '+' : '') + elbowS.deltaPct.toFixed(0) + '%' : '-'} / 体幹${torsoS.ready ? (torsoS.deltaPct > 0 ? '+' : '') + torsoS.deltaPct.toFixed(0) + '%' : '-'}`
+                    : 'データ収集中…(1分×2区間ぶん必要です)';
+                ctx.textAlign = 'right';
+                ctx.fillText(summaryText, m.left + gw, m.top - 6);
+            }
+
+            // お手本 vs 自分: ループ位相を横軸に、手首の高さを重ね描きする。
+            // どのタイミングでお手本からズレたかが時間軸で分かる、このモードの主役の表示。
+            const guideMonitorCanvas = document.getElementById('guideMonitorCanvas');
+            function drawGuideMonitor(now) {
+                if (!guideMonitorCanvas) return;
+                const ctx = guideMonitorCanvas.getContext('2d');
+                const W = guideMonitorCanvas.width, H = guideMonitorCanvas.height;
+                const m = { top: 18, right: 8, bottom: 14, left: 8 };
+                const gw = W - m.left - m.right, gh = H - m.top - m.bottom;
+
+                ctx.fillStyle = '#222';
+                ctx.fillRect(0, 0, W, H);
+
+                if (!motionGuide.hasReference()) {
+                    ctx.fillStyle = '#888';
+                    ctx.textAlign = 'center';
+                    ctx.font = '10px "Noto Sans JP", Arial';
+                    ctx.fillText('「お手本を記録」で先生の動きを登録してください', W / 2, H / 2);
+                    return;
+                }
+
+                // 表示する手: 追従中のものを優先、なければお手本の最初の手
+                const labels = motionGuide.getLabels();
+                const label = labels.includes(monitorConfig.hand) ? monitorConfig.hand : labels[0];
+                const dur = motionGuide.getDuration();
+                if (!label || dur <= 0) return;
+
+                // y軸はお手本と自分の両方が入る範囲に合わせる
+                const samples = motionGuide.getFollowSamples(label);
+                let yMin = Infinity, yMax = -Infinity;
+                const N = 60;
+                const refPts = [];
+                for (let i = 0; i <= N; i++) {
+                    const p = motionGuide.transform(motionGuide.samplePath(label, (i / N) * dur), label);
+                    if (!p) continue;
+                    refPts.push({ phase01: i / N, y: p.y });
+                    if (p.y < yMin) yMin = p.y;
+                    if (p.y > yMax) yMax = p.y;
+                }
+                for (const s of samples) {
+                    if (s.y < yMin) yMin = s.y;
+                    if (s.y > yMax) yMax = s.y;
+                }
+                if (!Number.isFinite(yMin) || !Number.isFinite(yMax)) return;
+                const pad = Math.max(0.02, (yMax - yMin) * 0.15);
+                yMin -= pad; yMax += pad;
+
+                const xOf = (phase01) => m.left + phase01 * gw;
+                const yOf = (yv) => m.top + ((yv - yMin) / Math.max(1e-6, yMax - yMin)) * gh;
+
+                // 縦グリッド (ループを4分割)
+                ctx.strokeStyle = '#3a3a3a';
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                for (let i = 0; i <= 4; i++) {
+                    const x = xOf(i / 4);
+                    ctx.moveTo(x, m.top);
+                    ctx.lineTo(x, m.top + gh);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // お手本 (金)
+                ctx.beginPath();
+                refPts.forEach((p, i) => {
+                    const x = xOf(p.phase01), y = yOf(p.y);
+                    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                });
+                ctx.strokeStyle = '#FFD700';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // 自分 (シアン)
+                if (samples.length > 1) {
+                    ctx.beginPath();
+                    samples.forEach((s, i) => {
+                        const x = xOf(s.phase01), y = yOf(s.y);
+                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    });
+                    ctx.strokeStyle = '#00d4ff';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // 再生位置のカーソル
+                const info = motionGuide.loopInfo(now);
+                if (info) {
+                    const x = xOf(info.phase01);
+                    ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(x, m.top);
+                    ctx.lineTo(x, m.top + gh);
+                    ctx.stroke();
+                }
+
+                ctx.font = '10px "Noto Sans JP", Arial';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#FFD700';
+                ctx.fillText('お手本', m.left + 4, m.top - 6);
+                ctx.fillStyle = '#00d4ff';
+                ctx.fillText('自分', m.left + 52, m.top - 6);
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'right';
+                ctx.fillText(`${handJa(label) || label} / ${(dur / 1000).toFixed(1)}秒ループ`, m.left + gw, m.top - 6);
+                ctx.textAlign = 'center';
+                ctx.fillText('ループ内の時間 →', W / 2, H - 3);
+            }
+
+            const guideStatsEl = document.getElementById('guide-stats');
+            let lastGuideStatsText = '';
+            function updateGuideStats() {
+                if (!guideStatsEl) return;
+                let text;
+                if (!motionGuide.hasReference()) {
+                    text = 'お手本を記録して再生してください';
+                } else if (!motionGuide.playing) {
+                    const labels = motionGuide.getLabels().map(l => handJa(l) || l).join('・');
+                    text = `お手本: ${labels} / ${(motionGuide.getDuration() / 1000).toFixed(1)}秒\n「お手本を再生」で練習を始めます`;
+                } else {
+                    const lines = [];
+                    for (const label of motionGuide.getLabels().sort()) {
+                        const s = motionGuide.getScore(label);
+                        if (!s.ready || s.live == null) {
+                            lines.push(`${handJa(label) || label}: 手を映してください`);
+                            continue;
+                        }
+                        const grade = s.live >= 75 ? 'ぴったり◎' : (s.live >= 50 ? 'おしい◯' : 'ズレ大△');
+                        const lastTxt = s.last != null ? ` / 前回 ${Math.round(s.last)}` : '';
+                        lines.push(`${handJa(label) || label}: ${Math.round(s.live)}点 ${grade}${lastTxt}`);
+                    }
+                    text = lines.join('\n');
+                }
+                if (text !== lastGuideStatsText) {
+                    guideStatsEl.textContent = text;
+                    lastGuideStatsText = text;
+                }
+            }
+
             demo.drawResults = (results) => {
                 const canvasCtx = demo.canvasCtx;
                 const w = canvasElement.width;
                 const h = canvasElement.height;
+                const frameNow = performance.now();
 
                 canvasCtx.save();
                 canvasCtx.clearRect(0, 0, w, h);
@@ -178,49 +1118,513 @@
                 }
 
                 // Draw Image
-                if (demo.config.showImage) {
+                if (demo.config.showImage && results.image) {
                     canvasCtx.drawImage(results.image, 0, 0, w, h);
                 } else {
                     canvasCtx.fillStyle = '#000';
                     canvasCtx.fillRect(0, 0, w, h);
                 }
 
-                // Draw Landmarks
-                if (results.multiHandLandmarks) {
-                    for (const landmarks of results.multiHandLandmarks) {
-                        drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
-                        drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2 });
+                let isFormBad = false;
+                const badLabels = [];
+                let anyWarmup = false;
+
+                // フォームモード: 打鍵ゲート(音声)の更新
+                if (demo.lessonMode === 'form') {
+                    if (formConfig.gating === 'audio' && demo.audioAnalyzer && demo.audioAnalyzer.analyser) {
+                        demo.audioAnalyzer.getWaveformData(); // isPeak を更新
+                        if (demo.audioAnalyzer.isPeak) formGate.lastPeak = frameNow;
+                    }
+                    formGate.open = formConfig.gating === 'always' || (frameNow - formGate.lastPeak) < 300;
+
+                    // 手が映っていない場合でもキャリブレーションのタイムアウトは進める
+                    if (formAnalyzer.calibrating && frameNow >= formAnalyzer.calibEndTime) {
+                        formAnalyzer.finishCalibration();
                     }
                 }
+
+                // 打鍵×運指モード: 音声オンセット検出 (音量の立ち上がりエッジ)
+                if (demo.lessonMode === 'fingering' && strikeConfig.source === 'audio'
+                    && demo.audioAnalyzer && demo.audioAnalyzer.analyser) {
+                    demo.audioAnalyzer.getWaveformData(); // currentVolume を更新
+                    const vol = demo.audioAnalyzer.currentVolume;
+                    if (vol >= 28 && strikeGate.prevVol < 28 && frameNow - strikeGate.lastOnset > 120) {
+                        strikeGate.lastOnset = frameNow;
+                        strikeDetector.resolveAudioOnset(frameNow);
+                    }
+                    strikeGate.prevVol = vol;
+                }
+
+                // お手本モード: 状態機械を進め、お手本の軌跡を画面に残す。
+                // 手が映っていないフレームでもカウントダウン/記録終了が進むよう、手のループの外で行う。
+                if (demo.lessonMode === 'guide') {
+                    motionGuide.tick(frameNow);
+
+                    for (const label of motionGuide.getLabels()) {
+                        const poly = motionGuide.getReferencePolyline(label);
+                        if (!poly || poly.length < 2) continue;
+                        canvasCtx.beginPath();
+                        poly.forEach((p, i) => {
+                            i === 0 ? canvasCtx.moveTo(p.x * w, p.y * h) : canvasCtx.lineTo(p.x * w, p.y * h);
+                        });
+                        canvasCtx.strokeStyle = 'rgba(255, 215, 0, 0.45)';
+                        canvasCtx.lineWidth = 8;
+                        canvasCtx.lineCap = 'round';
+                        canvasCtx.lineJoin = 'round';
+                        canvasCtx.stroke();
+                        canvasCtx.lineCap = 'butt';
+                        canvasCtx.lineJoin = 'miter';
+
+                        // 始点マーカー (ここから始める、が分かるように)
+                        canvasCtx.beginPath();
+                        canvasCtx.arc(poly[0].x * w, poly[0].y * h, 7, 0, 2 * Math.PI);
+                        canvasCtx.fillStyle = 'rgba(255, 215, 0, 0.8)';
+                        canvasCtx.fill();
+                    }
+                }
+
+                // Draw Landmarks
+                if (results.multiHandLandmarks) {
+                    for (let index = 0; index < results.multiHandLandmarks.length; index++) {
+                        const landmarks = results.multiHandLandmarks[index];
+
+                        // 全モード共通: 手の骨格オーバーレイ (設定でON/OFF可)
+                        if (demo.config.showLandmarks !== false) {
+                            const calibrating = demo.lessonMode === 'form' && formAnalyzer.calibrating;
+                            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {
+                                color: calibrating ? '#00d4ff' : '#00FF00', lineWidth: 5
+                            });
+                            drawLandmarks(canvasCtx, landmarks, {
+                                color: calibrating ? '#00d4ff' : '#FF0000', lineWidth: 2
+                            });
+                        }
+
+                        if (demo.lessonMode === 'form') {
+                            // ワールド座標(3D・メートル単位)を優先、無ければ正規化座標で代用
+                            const world = results.multiHandWorldLandmarks && results.multiHandWorldLandmarks[index]
+                                ? results.multiHandWorldLandmarks[index] : landmarks;
+                            const handedCat = results.multiHandedness && results.multiHandedness[index]
+                                ? (results.multiHandedness[index][0] || results.multiHandedness[index]) : null;
+                            const handLabel = handedCat && handedCat.categoryName ? handedCat.categoryName
+                                : (handedCat && handedCat.label ? handedCat.label : 'Hand' + index);
+                            const handScore = handedCat && handedCat.score != null ? handedCat.score : 1;
+
+                            const res = formAnalyzer.analyzeHand(world, handLabel, {
+                                judge: formGate.open,
+                                now: frameNow,
+                                includeThumb: formConfig.includeThumb,
+                                score: handScore
+                            });
+
+                            if (res) {
+                                if (res.warmup) anyWarmup = true;
+
+                                // 角度モニターへのサンプル追加 (選択中の手・指のみ)
+                                if (handLabel === monitorConfig.hand) {
+                                    const mf = res.fingers.find(fr => fr.name === monitorConfig.finger);
+                                    if (mf && mf.angle != null) {
+                                        angleHistory.push({ t: frameNow, pip: mf.pip, dip: mf.angle, bad: mf.status === 'bad' });
+                                        while (angleHistory.length && frameNow - angleHistory[0].t > 12000) angleHistory.shift();
+                                    }
+                                }
+
+                                for (const fr of res.fingers) {
+                                    if (fr.status === 'na') continue;
+                                    const pt = landmarks[fr.jointIndex];
+                                    const x = pt.x * w, y = pt.y * h;
+
+                                    let color = '#00FF00';
+                                    if (fr.status === 'bad') color = '#FF3333';
+                                    else if (fr.near) color = '#FFB020';
+
+                                    canvasCtx.beginPath();
+                                    canvasCtx.arc(x, y, fr.status === 'bad' ? 13 : 7, 0, 2 * Math.PI);
+                                    canvasCtx.fillStyle = color;
+                                    canvasCtx.fill();
+                                    if (fr.status === 'bad') {
+                                        canvasCtx.lineWidth = 3;
+                                        canvasCtx.strokeStyle = '#FFFFFF';
+                                        canvasCtx.stroke();
+                                    }
+
+                                    if (formConfig.showAngles && fr.angle != null && !formAnalyzer.calibrating) {
+                                        drawText(canvasCtx, `${Math.round(fr.angle)}°`, x + 14, y - 8, color, 'bold 15px Arial');
+                                    }
+
+                                    if (fr.status === 'bad') {
+                                        isFormBad = true;
+                                        const name = `${handJa(handLabel)}${fr.label}`;
+                                        if (!badLabels.includes(name)) badLabels.push(name);
+                                    }
+                                }
+                            }
+                        }
+                        else if (demo.lessonMode === 'fingering') {
+                            const handedCat = results.multiHandedness && results.multiHandedness[index]
+                                ? (results.multiHandedness[index][0] || results.multiHandedness[index]) : null;
+                            const handLabel = handedCat && handedCat.categoryName ? handedCat.categoryName
+                                : (handedCat && handedCat.label ? handedCat.label : 'Hand' + index);
+
+                            strikeDetector.update(landmarks, handLabel, frameNow, strikeConfig.source === 'motion');
+
+                            // 打鍵フラッシュ (金リング + 指番号)
+                            for (const fl of recentFlashes) {
+                                if (fl.hand !== handLabel || frameNow - fl.t > 350) continue;
+                                const pt = landmarks[fl.tip];
+                                const k = 1 - (frameNow - fl.t) / 350;
+                                canvasCtx.beginPath();
+                                canvasCtx.arc(pt.x * w, pt.y * h, 10 + 14 * k, 0, 2 * Math.PI);
+                                canvasCtx.strokeStyle = `rgba(255, 215, 0, ${0.3 + 0.7 * k})`;
+                                canvasCtx.lineWidth = 4;
+                                canvasCtx.stroke();
+                                drawText(canvasCtx, String(fl.finger), pt.x * w + 16, pt.y * h - 12, '#FFD700', 'bold 22px Arial');
+                            }
+                        }
+                        else if (demo.lessonMode === 'wrist') {
+                            const handedCat = results.multiHandedness && results.multiHandedness[index]
+                                ? (results.multiHandedness[index][0] || results.multiHandedness[index]) : null;
+                            const handLabel = handedCat && handedCat.categoryName ? handedCat.categoryName
+                                : (handedCat && handedCat.label ? handedCat.label : 'Hand' + index);
+
+                            const res = wristAnalyzer.update(landmarks, handLabel, frameNow);
+                            wristLatest[handLabel] = res;
+
+                            const wristPt = landmarks[0];
+                            if (!wristTrails[handLabel]) wristTrails[handLabel] = [];
+                            wristTrails[handLabel].push({ t: frameNow, x: wristPt.x, y: wristPt.y });
+                            while (wristTrails[handLabel].length && frameNow - wristTrails[handLabel][0].t > 1500) {
+                                wristTrails[handLabel].shift();
+                            }
+
+                            if (res) {
+                                if (!wristHistory[handLabel]) wristHistory[handLabel] = [];
+                                wristHistory[handLabel].push({ t: frameNow, y: wristPt.y, score: res.ready ? res.score : null });
+                                while (wristHistory[handLabel].length && frameNow - wristHistory[handLabel][0].t > 12000) {
+                                    wristHistory[handLabel].shift();
+                                }
+                            }
+
+                            // 手首の軌跡 (スコアに応じた色)
+                            const score = res && res.ready && res.score != null ? res.score : null;
+                            const trailColor = score == null ? 'rgba(200, 200, 200, 0.7)'
+                                : score >= 70 ? 'rgba(77, 255, 77, 0.85)'
+                                    : score >= 40 ? 'rgba(255, 221, 87, 0.85)'
+                                        : 'rgba(255, 77, 77, 0.85)';
+
+                            const trail = wristTrails[handLabel];
+                            if (trail.length > 1) {
+                                canvasCtx.beginPath();
+                                trail.forEach((p, i) => {
+                                    i === 0 ? canvasCtx.moveTo(p.x * w, p.y * h) : canvasCtx.lineTo(p.x * w, p.y * h);
+                                });
+                                canvasCtx.strokeStyle = trailColor;
+                                canvasCtx.lineWidth = 5;
+                                canvasCtx.stroke();
+                            }
+
+                            if (score != null) {
+                                drawText(canvasCtx, `しなやかさ ${Math.round(score)}`, wristPt.x * w + 18, wristPt.y * h + 6, trailColor, 'bold 18px "Noto Sans JP", Arial');
+                            }
+                        }
+                        else if (demo.lessonMode === 'guide') {
+                            const handedCat = results.multiHandedness && results.multiHandedness[index]
+                                ? (results.multiHandedness[index][0] || results.multiHandedness[index]) : null;
+                            const handLabel = handedCat && handedCat.categoryName ? handedCat.categoryName
+                                : (handedCat && handedCat.label ? handedCat.label : 'Hand' + index);
+
+                            const wristPt = landmarks[0];
+                            const scale = Math.hypot(landmarks[0].x - landmarks[9].x, landmarks[0].y - landmarks[9].y);
+
+                            // 記録中は先生の手首を蓄積
+                            motionGuide.pushFrame(handLabel, wristPt.x, wristPt.y, scale, frameNow);
+
+                            // 生徒の直近の軌跡
+                            if (!guideTrails[handLabel]) guideTrails[handLabel] = [];
+                            guideTrails[handLabel].push({ t: frameNow, x: wristPt.x, y: wristPt.y });
+                            while (guideTrails[handLabel].length && frameNow - guideTrails[handLabel][0].t > 1500) {
+                                guideTrails[handLabel].shift();
+                            }
+
+                            const trail = guideTrails[handLabel];
+                            if (trail.length > 1) {
+                                canvasCtx.beginPath();
+                                trail.forEach((p, i) => {
+                                    i === 0 ? canvasCtx.moveTo(p.x * w, p.y * h) : canvasCtx.lineTo(p.x * w, p.y * h);
+                                });
+                                canvasCtx.strokeStyle = 'rgba(0, 212, 255, 0.85)';
+                                canvasCtx.lineWidth = 5;
+                                canvasCtx.stroke();
+                            }
+
+                            // 追従評価 + ゴースト
+                            const gres = motionGuide.update(handLabel, wristPt.x, wristPt.y, scale, frameNow);
+                            if (gres && gres.ghost) {
+                                const gx = gres.ghost.x * w, gy = gres.ghost.y * h;
+
+                                // 自分の手首 → ゴースト を結ぶ線 (ズレの大きさを色で示す)
+                                if (gres.active && gres.err != null) {
+                                    const k = Math.max(0, Math.min(1, gres.err / motionGuide.maxErr));
+                                    const errColor = k < 0.25 ? 'rgba(77, 255, 77, 0.9)'
+                                        : k < 0.6 ? 'rgba(255, 221, 87, 0.9)'
+                                            : 'rgba(255, 77, 77, 0.9)';
+                                    canvasCtx.beginPath();
+                                    canvasCtx.moveTo(wristPt.x * w, wristPt.y * h);
+                                    canvasCtx.lineTo(gx, gy);
+                                    canvasCtx.strokeStyle = errColor;
+                                    canvasCtx.lineWidth = 3;
+                                    canvasCtx.stroke();
+                                }
+
+                                // ゴースト本体
+                                canvasCtx.beginPath();
+                                canvasCtx.arc(gx, gy, 16, 0, 2 * Math.PI);
+                                canvasCtx.fillStyle = 'rgba(255, 215, 0, 0.28)';
+                                canvasCtx.fill();
+                                canvasCtx.beginPath();
+                                canvasCtx.arc(gx, gy, 16, 0, 2 * Math.PI);
+                                canvasCtx.strokeStyle = '#FFD700';
+                                canvasCtx.lineWidth = 4;
+                                canvasCtx.stroke();
+                            }
+                        }
+                        else if (demo.lessonMode === 'free') {
+                            if (!traces[index]) traces[index] = [];
+                            traces[index].push({
+                                wrist: { x: landmarks[0].x, y: landmarks[0].y },
+                                index: { x: landmarks[8].x, y: landmarks[8].y }
+                            });
+
+                            if (traces[index].length > 40) traces[index].shift();
+
+                            canvasCtx.beginPath();
+                            for (let i = 0; i < traces[index].length; i++) {
+                                const p = traces[index][i].index;
+                                if (i === 0) canvasCtx.moveTo(p.x * w, p.y * h);
+                                else canvasCtx.lineTo(p.x * w, p.y * h);
+                            }
+                            canvasCtx.strokeStyle = '#00d4ff';
+                            canvasCtx.lineWidth = 4;
+                            canvasCtx.stroke();
+                        }
+                    }
+                }
+
+                // 姿勢チェックモード: 肩-肘-手首・肩-腰の骨格線と、肘のズレ・体幹の傾きを表示
+                // (数値は絶対的な合否ではなく、下のセッション内トレンドで見る参考値)
+                if (demo.lessonMode === 'posture' && results.poseLandmarks) {
+                    if (demo.config.showLandmarks !== false) {
+                        drawPostureSkeleton(canvasCtx, results.poseLandmarks, w, h);
+                    }
+                    const world = (results.poseWorldLandmarks && results.poseWorldLandmarks.length)
+                        ? results.poseWorldLandmarks : results.poseLandmarks;
+                    const pres = postureAnalyzer.analyzeFrame(world, results.poseLandmarks, frameNow);
+                    if (pres && pres.ready) {
+                        const lines = [];
+                        if (pres.elbowDev != null) lines.push(`肘の直線からのズレ ${(pres.elbowDev * 100).toFixed(0)}%`);
+                        if (pres.torsoLean != null) lines.push(`体幹の傾き ${pres.torsoLean.toFixed(0)}°`);
+                        lines.forEach((t, i) => drawText(canvasCtx, t, 20, 34 + i * 26, '#00d4ff', 'bold 18px "Noto Sans JP", Arial'));
+                    } else {
+                        drawText(canvasCtx, '姿勢を計測中…', 20, 34, '#ffffff', 'bold 18px "Noto Sans JP", Arial');
+                    }
+                }
+
+                // フォームモードの画面メッセージ
+                if (demo.lessonMode === 'form') {
+                    if (formAnalyzer.calibrating) {
+                        const remain = Math.max(0, (formAnalyzer.calibEndTime - frameNow) / 1000);
+                        drawText(canvasCtx, `基準を記録中… 良いフォームのまま弾いてください (残り ${remain.toFixed(1)} 秒)`, 20, 34, '#00d4ff', 'bold 20px "Noto Sans JP", Arial');
+                    } else if (anyWarmup) {
+                        drawText(canvasCtx, '手の向きを推定中…', 20, 34, '#ffffff', 'bold 18px "Noto Sans JP", Arial');
+                    } else if (formConfig.gating === 'audio' && !formGate.open) {
+                        drawText(canvasCtx, '打鍵待ち (音を検出すると判定します)', 20, 34, 'rgba(255,255,255,0.7)', '14px "Noto Sans JP", Arial');
+                    }
+                    updateCountsPanel();
+                    drawAngleMonitor(frameNow);
+                    drawMamushiTrend(frameNow);
+                }
+                else if (demo.lessonMode === 'fingering') {
+                    drawStrikeTimeline(frameNow);
+                    updateStrikeStats();
+                    while (recentFlashes.length && frameNow - recentFlashes[0].t > 400) recentFlashes.shift();
+                }
+                else if (demo.lessonMode === 'wrist') {
+                    drawWristMonitor(frameNow);
+                    updateWristStats();
+                }
+                else if (demo.lessonMode === 'posture') {
+                    drawPostureMonitor(frameNow);
+                    updatePostureStats();
+                }
+                else if (demo.lessonMode === 'guide') {
+                    if (motionGuide.isCountingDown) {
+                        const remain = motionGuide.getRemainingSec(frameNow);
+                        drawText(canvasCtx, `お手本の記録まで ${Math.ceil(remain)}…  構えてください`, 20, 34, '#FFD700', 'bold 22px "Noto Sans JP", Arial');
+                    } else if (motionGuide.isRecording) {
+                        const remain = motionGuide.getRemainingSec(frameNow);
+                        drawText(canvasCtx, `● お手本を記録中… (残り ${remain.toFixed(1)} 秒)`, 20, 34, '#ff4d4d', 'bold 22px "Noto Sans JP", Arial');
+                    } else if (motionGuide.playing) {
+                        const info = motionGuide.loopInfo(frameNow);
+                        if (info && !info.active) {
+                            drawText(canvasCtx, '次のループまで…  始点で構えてください', 20, 34, 'rgba(255,255,255,0.8)', 'bold 18px "Noto Sans JP", Arial');
+                        }
+                    } else if (motionGuide.hasReference()) {
+                        drawText(canvasCtx, 'お手本を表示中 (「お手本を再生」でなぞる練習を開始)', 20, 34, 'rgba(255,255,255,0.7)', '16px "Noto Sans JP", Arial');
+                    } else {
+                        drawText(canvasCtx, '「お手本を記録」で先生の動きを登録してください', 20, 34, 'rgba(255,255,255,0.7)', '16px "Noto Sans JP", Arial');
+                    }
+                    drawGuideMonitor(frameNow);
+                    updateGuideStats();
+                }
+
                 canvasCtx.restore();
+
+                const alertEl = document.getElementById('form-alert');
+                if (alertEl) {
+                    if (demo.lessonMode === 'form' && isFormBad) {
+                        alertEl.textContent = `${badLabels.join('、')} の第1関節につぶれの兆候`;
+                        alertEl.classList.remove('hidden');
+                    } else {
+                        alertEl.classList.add('hidden');
+                    }
+                }
             };
 
-            // Setup Hands
-            const hands = new Hands({
-                locateFile: (file) => {
-                    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            // ---------- HandLandmarker (MediaPipe Tasks) Setup ----------
+            let handLandmarker = null;
+            let lastVideoTime = -1;
+            let lastTimestamp = 0;
+            let visionResolver = null;
+
+            async function createLandmarker() {
+                visionResolver = visionResolver || await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
+                );
+                const options = (delegate) => ({
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task",
+                        delegate: delegate
+                    },
+                    runningMode: "VIDEO",
+                    numHands: 2,
+                    minHandDetectionConfidence: 0.5,
+                    minHandPresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+                try {
+                    return await HandLandmarker.createFromOptions(visionResolver, options("GPU"));
+                } catch (e) {
+                    console.warn("GPU delegate failed. Falling back to CPU.", e);
+                    return await HandLandmarker.createFromOptions(visionResolver, options("CPU"));
                 }
-            });
-            hands.setOptions({
-                maxNumHands: 2,
-                modelComplexity: 1,
-                minDetectionConfidence: 0.5,
-                minTrackingConfidence: 0.5
-            });
-            hands.onResults((results) => {
-                loadingOverlay.classList.add('hidden');
-                demo.onResults(results);
-            });
+            }
+
+            try {
+                handLandmarker = await createLandmarker();
+            } catch (e) {
+                console.error(e);
+                loadingOverlay.textContent = "AIモデルの読込に失敗しました: " + e.message;
+                return;
+            }
+            loadingOverlay.textContent = "カメラ起動中...";
+
+            // ---------- PoseLandmarker (姿勢チェック用, 遅延初期化) ----------
+            // 初回ページ読込のAIモデル待ち時間を増やさないよう、
+            // 「姿勢チェック」モードに初めて切り替えたタイミングでのみ読み込む。
+            let poseLandmarker = null;
+            let poseLandmarkerPromise = null;
+
+            async function createPoseLandmarker() {
+                visionResolver = visionResolver || await FilesetResolver.forVisionTasks(
+                    "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm"
+                );
+                const options = (delegate) => ({
+                    baseOptions: {
+                        modelAssetPath: "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task",
+                        delegate: delegate
+                    },
+                    runningMode: "VIDEO",
+                    numPoses: 1,
+                    minPoseDetectionConfidence: 0.5,
+                    minPosePresenceConfidence: 0.5,
+                    minTrackingConfidence: 0.5
+                });
+                try {
+                    return await PoseLandmarker.createFromOptions(visionResolver, options("GPU"));
+                } catch (e) {
+                    console.warn("GPU delegate failed. Falling back to CPU.", e);
+                    return await PoseLandmarker.createFromOptions(visionResolver, options("CPU"));
+                }
+            }
+
+            function ensurePoseLandmarker() {
+                if (poseLandmarker) return Promise.resolve(poseLandmarker);
+                if (!poseLandmarkerPromise) {
+                    if (postureStatusEl) postureStatusEl.textContent = '姿勢モデルを読込中...';
+                    poseLandmarkerPromise = createPoseLandmarker().then(pl => {
+                        poseLandmarker = pl;
+                        if (postureStatusEl) postureStatusEl.textContent = '';
+                        return pl;
+                    }).catch(e => {
+                        console.error(e);
+                        if (postureStatusEl) postureStatusEl.textContent = '姿勢モデルの読込に失敗しました: ' + e.message;
+                        poseLandmarkerPromise = null;
+                        throw e;
+                    });
+                }
+                return poseLandmarkerPromise;
+            }
 
             // Setup Camera
             const camera = new CameraManager(videoElement, {
                 onFrame: async () => {
-                    if (!demo.isPlayingBack) {
-                        await hands.send({ image: videoElement });
+                    if (demo.isPlayingBack) return;
+                    // 同一フレームの二重処理を避ける
+                    if (videoElement.currentTime === lastVideoTime) return;
+                    lastVideoTime = videoElement.currentTime;
+
+                    // detectForVideo のタイムスタンプは単調増加が必須
+                    let ts = performance.now();
+                    if (ts <= lastTimestamp) ts = lastTimestamp + 1;
+                    lastTimestamp = ts;
+
+                    if (demo.lessonMode === 'posture') {
+                        // 姿勢チェック時は pose モデルのみ実行し、他モードのフレーム処理コストは増やさない
+                        if (!poseLandmarker) return;
+                        const res = poseLandmarker.detectForVideo(videoElement, ts);
+                        loadingOverlay.classList.add('hidden');
+                        demo.onResults({
+                            image: videoElement,
+                            poseLandmarks: res.landmarks && res.landmarks[0] ? res.landmarks[0] : null,
+                            poseWorldLandmarks: res.worldLandmarks && res.worldLandmarks[0] ? res.worldLandmarks[0] : null
+                        });
+                        return;
                     }
+
+                    if (!handLandmarker) return;
+                    const res = handLandmarker.detectForVideo(videoElement, ts);
+                    loadingOverlay.classList.add('hidden');
+
+                    // 旧 Hands API 互換の形に変換して DemoCore へ渡す。
+                    // 注意: tasks-vision のランドマークには visibility:0 が付いており、
+                    // 旧 drawing_utils は visibility < 0.5 の点を描画スキップするため、
+                    // visibility を外した素の座標に変換する
+                    const strip = (list) => (list || []).map(lms => lms.map(p => ({ x: p.x, y: p.y, z: p.z })));
+                    demo.onResults({
+                        image: videoElement,
+                        multiHandLandmarks: strip(res.landmarks),
+                        multiHandWorldLandmarks: strip(res.worldLandmarks),
+                        multiHandedness: res.handednesses || res.handedness || []
+                    });
                 },
                 width: 1920,
                 height: 1080
+            });
+
+            // Start Camera
+            camera.start().catch(e => {
+                if (loadingOverlay) {
+                    loadingOverlay.textContent = "Camera Error: " + e.message;
+                }
             });
 
             // Resize Canvas to match Video
@@ -236,6 +1640,356 @@
             document.getElementById('check-image').addEventListener('change', (e) => {
                 demo.config.showImage = e.target.checked;
             });
+            document.getElementById('check-landmarks').addEventListener('change', (e) => {
+                demo.config.showLandmarks = e.target.checked;
+            });
+            document.getElementById('check-audio-graph').addEventListener('change', (e) => {
+                const panel = document.querySelector('.analysis-panel');
+                if (e.target.checked) {
+                    panel.classList.remove('hidden');
+                } else {
+                    panel.classList.add('hidden');
+                }
+            });
+
+            // Lesson Mode Logic
+            const modeSelect = document.getElementById('lesson-mode-select');
+            const modeDesc = document.getElementById('mode-description');
+            const pianoGuide = document.getElementById('piano-guide');
+            const formAlert = document.getElementById('form-alert');
+            const formSettings = document.getElementById('form-settings');
+
+            // ---------- Form Mode Controls ----------
+            const btnCalibrate = document.getElementById('btn-calibrate');
+            const btnLearnReset = document.getElementById('btn-learn-reset');
+            const btnCountReset = document.getElementById('btn-count-reset');
+            const formLearnStatus = document.getElementById('form-learn-status');
+            const sensitivitySlider = document.getElementById('sensitivity-slider');
+            const sensitivityValue = document.getElementById('sensitivity-value');
+            const gatingSelect = document.getElementById('gating-select');
+            const checkShowAngles = document.getElementById('check-show-angles');
+            const checkThumb = document.getElementById('check-thumb');
+
+            function updateFormStatus() {
+                if (!formLearnStatus) return;
+                if (formAnalyzer.calibrating) {
+                    formLearnStatus.textContent = "記録中... 良いフォームで弾いてください";
+                    formLearnStatus.style.color = "#00d4ff";
+                } else if (formAnalyzer.hasCalibration()) {
+                    const thr = formAnalyzer.getThresholds(monitorConfig.hand, monitorConfig.finger);
+                    formLearnStatus.textContent = `基準登録済み (つぶれ<${Math.round(thr.enterFlat)}° / 反り<${Math.round(thr.enterHyper)}°)`;
+                    formLearnStatus.style.color = "#00FF00";
+                } else {
+                    const thr = formAnalyzer.getThresholds(monitorConfig.hand, monitorConfig.finger);
+                    formLearnStatus.textContent = `未登録 (つぶれ<${Math.round(thr.enterFlat)}° / 反り<${Math.round(thr.enterHyper)}°)`;
+                    formLearnStatus.style.color = "#aaa";
+                }
+            }
+
+            formAnalyzer.onCalibrationDone = (sampleCount) => {
+                if (btnCalibrate) btnCalibrate.disabled = false;
+                updateFormStatus();
+                if (sampleCount === 0 && formLearnStatus) {
+                    formLearnStatus.textContent = "記録失敗: 手が検出できませんでした";
+                    formLearnStatus.style.color = "#ff4d4d";
+                }
+            };
+
+            if (btnCalibrate) {
+                btnCalibrate.addEventListener('click', () => {
+                    formAnalyzer.startCalibration(3000);
+                    btnCalibrate.disabled = true;
+                    updateFormStatus();
+                });
+            }
+            if (btnLearnReset) {
+                btnLearnReset.addEventListener('click', () => {
+                    formAnalyzer.clearCalibration();
+                    updateFormStatus();
+                });
+            }
+            if (btnCountReset) {
+                btnCountReset.addEventListener('click', () => {
+                    formAnalyzer.resetCounts();
+                });
+            }
+            if (sensitivitySlider) {
+                sensitivitySlider.addEventListener('input', (e) => {
+                    formAnalyzer.sensitivity = parseInt(e.target.value, 10);
+                    if (sensitivityValue) sensitivityValue.textContent = `-${formAnalyzer.sensitivity}°`;
+                    updateFormStatus();
+                });
+            }
+            if (gatingSelect) {
+                gatingSelect.addEventListener('change', async (e) => {
+                    formConfig.gating = e.target.value;
+                    if (formConfig.gating === 'audio') {
+                        try {
+                            await demo._ensureAudioContext();
+                        } catch (err) {
+                            alert("マイクを利用できないため「常時」に戻します: " + err.message);
+                            e.target.value = 'always';
+                            formConfig.gating = 'always';
+                        }
+                    }
+                });
+            }
+            if (checkShowAngles) {
+                checkShowAngles.addEventListener('change', (e) => {
+                    formConfig.showAngles = e.target.checked;
+                });
+            }
+            if (checkThumb) {
+                checkThumb.addEventListener('change', (e) => {
+                    formConfig.includeThumb = e.target.checked;
+                });
+            }
+            const monitorHandSel = document.getElementById('monitor-hand');
+            const monitorFingerSel = document.getElementById('monitor-finger');
+            if (monitorHandSel) {
+                monitorHandSel.addEventListener('change', (e) => {
+                    monitorConfig.hand = e.target.value;
+                    angleHistory.length = 0;
+                    updateFormStatus();
+                });
+            }
+            if (monitorFingerSel) {
+                monitorFingerSel.addEventListener('change', (e) => {
+                    monitorConfig.finger = e.target.value;
+                    angleHistory.length = 0;
+                    updateFormStatus();
+                });
+            }
+            updateFormStatus();
+
+            // ---------- Fingering Mode Controls ----------
+            const strikeSourceSel = document.getElementById('strike-source');
+            const strikeSens = document.getElementById('strike-sens');
+            const strikeSensValue = document.getElementById('strike-sens-value');
+            const btnStrikeReset = document.getElementById('btn-strike-reset');
+            if (strikeSourceSel) {
+                strikeSourceSel.addEventListener('change', async (e) => {
+                    strikeConfig.source = e.target.value;
+                    if (strikeConfig.source === 'audio') {
+                        try {
+                            await demo._ensureAudioContext();
+                        } catch (err) {
+                            alert("マイクを利用できないため「動きのみ」に戻します: " + err.message);
+                            e.target.value = 'motion';
+                            strikeConfig.source = 'motion';
+                        }
+                    }
+                });
+            }
+            if (strikeSens) {
+                strikeSens.addEventListener('input', (e) => {
+                    strikeDetector.vThresh = parseFloat(e.target.value);
+                    if (strikeSensValue) strikeSensValue.textContent = strikeDetector.vThresh.toFixed(1);
+                });
+            }
+            if (btnStrikeReset) {
+                btnStrikeReset.addEventListener('click', () => {
+                    strikeDetector.reset();
+                    recentFlashes.length = 0;
+                });
+            }
+
+            // ---------- Posture Mode Controls ----------
+            const btnPostureTrendReset = document.getElementById('btn-posture-trend-reset');
+            if (btnPostureTrendReset) {
+                btnPostureTrendReset.addEventListener('click', () => {
+                    postureAnalyzer.resetTrend();
+                });
+            }
+
+            // ---------- Motion Guide Controls ----------
+            const btnGuideRecord = document.getElementById('btn-guide-record');
+            const btnGuidePlay = document.getElementById('btn-guide-play');
+            const btnGuideExport = document.getElementById('btn-guide-export');
+            const btnGuideImport = document.getElementById('btn-guide-import');
+            const btnGuideClear = document.getElementById('btn-guide-clear');
+            const guideFileInput = document.getElementById('guide-file');
+            const guideStatusEl = document.getElementById('guide-status');
+            const guideDuration = document.getElementById('guide-duration');
+            const guideDurationValue = document.getElementById('guide-duration-value');
+            const guideSpeed = document.getElementById('guide-speed');
+            const guideSpeedValue = document.getElementById('guide-speed-value');
+            const guideAnchor = document.getElementById('guide-anchor');
+
+            function updateGuideStatus() {
+                const has = motionGuide.hasReference();
+                if (guideStatusEl) {
+                    if (motionGuide.isCountingDown || motionGuide.isRecording) {
+                        guideStatusEl.textContent = '記録中...';
+                        guideStatusEl.style.color = '#FFD700';
+                    } else if (has) {
+                        const labels = motionGuide.getLabels().map(l => handJa(l) || l).join('・');
+                        guideStatusEl.textContent = `お手本あり: ${labels} / ${(motionGuide.getDuration() / 1000).toFixed(1)}秒`;
+                        guideStatusEl.style.color = '#00FF00';
+                    } else {
+                        guideStatusEl.textContent = 'お手本はまだありません';
+                        guideStatusEl.style.color = '#aaa';
+                    }
+                }
+                if (btnGuidePlay) {
+                    btnGuidePlay.disabled = !has;
+                    btnGuidePlay.textContent = motionGuide.playing ? 'お手本を停止' : 'お手本を再生';
+                    btnGuidePlay.classList.toggle('btn-danger', motionGuide.playing);
+                }
+                if (btnGuideExport) btnGuideExport.disabled = !has;
+            }
+
+            motionGuide.onRecordingDone = (sampleCount) => {
+                if (btnGuideRecord) btnGuideRecord.disabled = false;
+                updateGuideStatus();
+                if (sampleCount === 0 && guideStatusEl) {
+                    guideStatusEl.textContent = '記録失敗: 手が検出できませんでした';
+                    guideStatusEl.style.color = '#ff4d4d';
+                }
+            };
+
+            if (btnGuideRecord) {
+                btnGuideRecord.addEventListener('click', () => {
+                    const sec = guideDuration ? parseInt(guideDuration.value, 10) : 5;
+                    motionGuide.startRecording(sec * 1000, 3000, !!demo.config.mirror);
+                    btnGuideRecord.disabled = true;
+                    updateGuideStatus();
+                });
+            }
+            if (btnGuidePlay) {
+                btnGuidePlay.addEventListener('click', () => {
+                    if (motionGuide.playing) {
+                        motionGuide.stopPlayback();
+                    } else {
+                        motionGuide.startPlayback(performance.now());
+                    }
+                    updateGuideStatus();
+                });
+            }
+            if (guideDuration) {
+                guideDuration.addEventListener('input', (e) => {
+                    if (guideDurationValue) guideDurationValue.textContent = `${e.target.value}秒`;
+                });
+            }
+            if (guideSpeed) {
+                guideSpeed.addEventListener('input', (e) => {
+                    motionGuide.speed = parseFloat(e.target.value);
+                    if (guideSpeedValue) guideSpeedValue.textContent = `${motionGuide.speed.toFixed(1)}x`;
+                    // 速度を変えるとループ長が変わるので位相を取り直す
+                    if (motionGuide.playing) motionGuide.startPlayback(performance.now());
+                });
+            }
+            if (guideAnchor) {
+                guideAnchor.addEventListener('change', (e) => {
+                    motionGuide.anchorMode = e.target.value;
+                    motionGuide.reanchor();
+                });
+            }
+            if (btnGuideClear) {
+                btnGuideClear.addEventListener('click', () => {
+                    if (!motionGuide.hasReference()) return;
+                    if (!confirm('記録したお手本を消します。よろしいですか?')) return;
+                    motionGuide.clearReference();
+                    updateGuideStatus();
+                });
+            }
+            if (btnGuideExport) {
+                btnGuideExport.addEventListener('click', () => {
+                    const data = motionGuide.toJSON();
+                    if (!data) return;
+                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'wrist_guide.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                });
+            }
+            if (btnGuideImport && guideFileInput) {
+                btnGuideImport.addEventListener('click', () => guideFileInput.click());
+                guideFileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (!file) return;
+                    try {
+                        const obj = JSON.parse(await file.text());
+                        if (!motionGuide.fromJSON(obj)) {
+                            alert('お手本ファイルの形式が正しくありません。');
+                        }
+                    } catch (err) {
+                        alert('読み込みに失敗しました: ' + err.message);
+                    }
+                    e.target.value = ''; // 同じファイルを続けて選べるように
+                    updateGuideStatus();
+                });
+            }
+            updateGuideStatus();
+
+            demo.lessonMode = modeSelect.value; // initialize with dropdown value
+
+            const fingeringSettings = document.getElementById('fingering-settings');
+            const wristSettings = document.getElementById('wrist-settings');
+            const postureSettings = document.getElementById('posture-settings');
+            const guideSettings = document.getElementById('guide-settings');
+            const MODE_DESC = {
+                none: '手の動きを追跡する基本モードです。',
+                fingering: '指先の下降(+打鍵音)から「どの指で弾いたか」を推定し、タイムラインとリズム統計を表示します。',
+                wrist: '手首の高さの変化量(動きの量)から「しなやかさ」を100点で評価します。固めず自然に動かすのがコツ。',
+                guide: '先生の手首の動きを数秒記録して画面に残し、生徒が金色のゴーストをなぞって練習します。',
+                form: '第1関節の「つぶれ・反り」（まむし指）を3D角度解析で検知します。瞬間の判定よりセッション内トレンドが目安。※試験的機能',
+                posture: '肩・肘・手首・腰から、肘の直線からのズレと体幹の傾きをセッション内トレンドとして追跡します。',
+                free: '指先と手首の軌跡を描画し、動きの滑らかさを確認できます。'
+            };
+
+            modeSelect.addEventListener('change', (e) => {
+                const mode = e.target.value;
+                demo.lessonMode = mode;
+
+                // Clear previous traces/state if any
+                if (demo.clearTraces) demo.clearTraces();
+
+                if (mode === 'posture') {
+                    ensurePoseLandmarker().catch(() => { /* エラーメッセージは posture-status 側に表示済み */ });
+                }
+
+                // モードごとの設定パネル表示
+                if (formSettings) formSettings.style.display = mode === 'form' ? 'block' : 'none';
+                if (fingeringSettings) fingeringSettings.style.display = mode === 'fingering' ? 'block' : 'none';
+                if (wristSettings) wristSettings.style.display = mode === 'wrist' ? 'block' : 'none';
+                if (postureSettings) postureSettings.style.display = mode === 'posture' ? 'block' : 'none';
+                if (guideSettings) guideSettings.style.display = mode === 'guide' ? 'block' : 'none';
+
+                // モードごとの分析チャート表示
+                const cardToggle = (id, show) => {
+                    const el = document.getElementById(id);
+                    if (el) el.classList.toggle('hidden', !show);
+                };
+                cardToggle('card-angle-monitor', mode === 'form');
+                cardToggle('card-mamushi-trend', mode === 'form');
+                cardToggle('card-strike-timeline', mode === 'fingering');
+                cardToggle('card-wrist-monitor', mode === 'wrist');
+                cardToggle('card-posture-monitor', mode === 'posture');
+                cardToggle('card-guide-monitor', mode === 'guide');
+
+                // お手本モードから離れたら再生を止める (裏で回り続けないように)
+                if (mode !== 'guide') {
+                    motionGuide.stopPlayback();
+                    if (motionGuide.isCountingDown || motionGuide.isRecording) {
+                        motionGuide.cancelRecording();
+                        if (btnGuideRecord) btnGuideRecord.disabled = false;
+                    }
+                }
+                updateGuideStatus();
+
+                modeDesc.textContent = MODE_DESC[mode] || '';
+                pianoGuide.classList.toggle('hidden', mode !== 'form');
+                formAlert.classList.add('hidden');
+            });
+
+            // Sync initial state
+            modeSelect.dispatchEvent(new Event('change'));
 
             // Loop for Analysis Visualization (Spectrum + Waveform)
             const spectrumCanvas = document.getElementById('spectrumCanvas');
@@ -290,10 +2044,6 @@
             }
             analysisLoop();
 
-            // Start Camera
-            camera.start().catch(e => {
-                loadingOverlay.textContent = "Camera Error: " + e.message;
-            });
         });
     </script>
 </body>
