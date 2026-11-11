@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>自分の身体の反応を見てみよう｜MediaPipe デモ</title>
+  <link rel="stylesheet" href="shared/style.css">
+  <style>
+    main { padding: 20px; display: grid; gap: 16px; max-width: 1100px; margin: 0 auto; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+    .card h2 { font-size: 1.25rem; margin: 0; }
+    .card a.btn { justify-self: start; }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <h1>自分の身体の反応を見てみよう</h1>
+    <span class="privacy">🔒 カメラの映像はこの端末の中だけで処理し、保存も送信もしません。</span>
+  </header>
+  <main>
+    <p>カメラ映像から手や顔の特徴点を推定（MediaPipe）し、動きを数値にしてリアルタイムに表示します。パソコンの Chrome で開くのがおすすめです。</p>
+    <div class="cards">
+      <section class="card">
+        <h2>指の速さと音の強さ</h2>
+        <p>鍵盤を弱く・強く弾いたときの、指先の速さを比べます。MIDI 鍵盤がなくても、スペースキーを鍵盤の代わりにして試せます。</p>
+        <a class="btn btn-primary" href="b_music/b1/">試す</a>
+      </section>
+      <section class="card">
+        <h2>口の動きを測る</h2>
+        <p>「あいうえお」と「バイバイ」を言いながら、口の開きや唇の閉じ方をグラフで見ます。</p>
+        <a class="btn btn-primary" href="c_face/">試す</a>
+      </section>
+    </div>
+    <p class="muted small">カメラがない場合は、各ページの「カメラなしで試す（ダミー入力）」で画面の流れだけを確かめられます。</p>
+  </main>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{
+  "_note": "B-1（ピアノの強弱と指先速度）の設定。★ は HUMAN が決める値で、いまは仮の値（WORKLOG.md 参照）",
+  "camera": { "width": 1280, "height": 720, "facingMode": "user", "mirror": false, "fps": 30, "delegate": "GPU" },
+  "_camera": "カメラは鍵盤の上〜斜め上から。上から見下ろすときは mirror: false（左右反転しない）",
+  "speed": {
+    "landmark": 8,
+    "_landmark": "8＝人差し指の先（既存デモと同じ）",
+    "smoothing": 0,
+    "_smoothing": "0＝ならさない（既存デモと同じ）。0〜0.9 で大きいほどならす"
+  },
+  "strike": {
+    "preSec": 0.25,
+    "_preSec": "★ 打鍵の直前、何秒の間の指先の速さの最大を使うか",
+    "postSec": 0.04,
+    "_postSec": "打鍵の時刻のあと、少しだけ含める（映像とMIDIの時刻の小さなずれのため）",
+    "videoLatencyMs": 60,
+    "_videoLatencyMs": "カメラが撮った時刻が分からないブラウザで、処理した時刻から引く値",
+    "debounceSec": 0.15,
+    "keys": [" "],
+    "_keys": "MIDI がないときに打鍵の代わりにするキー（スペース）"
+  },
+  "task": {
+    "_": "★ 課題（仮の値）",
+    "count": 3,
+    "order": ["weak", "strong"]
+  },
+  "live": { "windowSec": 6, "yMin": 1500 },
+  "handLostSec": 0.6
+}

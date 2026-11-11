@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>C 顔の動き｜口の動きを測る</title>
+  <link rel="stylesheet" href="../shared/style.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="back" href="../index.html" data-text="back"></a>
+    <h1 data-text="title"></h1>
+    <div class="tabs" id="tabs" role="tablist">
+      <button data-mode="exp" role="tab" data-text="modes.exp"></button>
+      <button data-mode="free" role="tab" data-text="modes.free"></button>
+    </div>
+    <span class="privacy">🔒 <span data-text="privacy"></span></span>
+  </header>
+
+  <main class="layout">
+    <div class="left">
+      <div class="video-wrap">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="videoMsg" class="video-msg" hidden></div>
+      </div>
+      <div id="taskPanel" class="panel task">
+        <p id="taskText" class="instruction"></p>
+        <div id="prompt" class="prompt"></div>
+        <div id="count" class="count"></div>
+        <div class="task-actions">
+          <button id="startBtn" class="btn btn-primary btn-big" data-text="task.start"></button>
+        </div>
+      </div>
+      <p id="freeHint" class="panel free-hint" data-text="free.hint" hidden></p>
+    </div>
+
+    <div class="right">
+      <!-- いまの口の動き（リアルタイム） -->
+      <section id="liveView" class="panel">
+        <h3 data-text="live.title"></h3>
+        <canvas id="cOpen" class="chart chart-mini"></canvas>
+        <canvas id="cWidth" class="chart chart-mini"></canvas>
+        <canvas id="cClose" class="chart chart-mini"></canvas>
+        <p class="muted small" data-text="metrics.unit"></p>
+        <h3 class="blend-title" data-text="blend.title"></h3>
+        <div id="blend" class="bars"></div>
+      </section>
+
+      <!-- けっか -->
+      <section id="resultView" class="panel" hidden>
+        <h2 data-text="result.title"></h2>
+        <h3 data-text="result.aiueo"></h3>
+        <canvas id="rA1" class="chart chart-mini"></canvas>
+        <canvas id="rA2" class="chart chart-mini"></canvas>
+        <canvas id="rA3" class="chart chart-mini"></canvas>
+        <h3 id="byeTitle"></h3>
+        <canvas id="rB1" class="chart chart-mini"></canvas>
+        <canvas id="rB2" class="chart chart-mini"></canvas>
+        <canvas id="rB3" class="chart chart-mini"></canvas>
+        <p id="closures" class="closures"></p>
+        <p class="muted" data-text="result.closuresHint"></p>
+        <p class="note" data-text="note"></p>
+        <div class="task-actions">
+          <button id="againBtn" class="btn btn-primary" data-text="result.again"></button>
+          <button id="toFreeBtn" class="btn" data-text="result.free"></button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <section class="explain-area">
+    <div id="explain"></div>
+    <p class="note" data-text="note"></p>
+  </section>
+
+  <details class="staff">
+    <summary data-text="staff.title"></summary>
+    <div class="row">
+      <label><span data-text="staff.camera"></span> <select id="camSelect"></select></label>
+      <label><input type="checkbox" id="mirror"> <span data-text="staff.mirror"></span></label>
+      <label><input type="checkbox" id="mesh"> <span data-text="staff.mesh"></span></label>
+      <button id="dummyBtn" class="btn" data-text="staff.dummy"></button>
+      <span id="camStatus" class="status">…</span>
+    </div>
+    <p data-text="staff.keys"></p>
+  </details>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

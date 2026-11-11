@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>B-1 音楽教育｜指の速さと音の強さ</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="back" href="../../index.html" data-text="back"></a>
+    <h1 data-text="title"></h1>
+    <div class="tabs" id="tabs" role="tablist">
+      <button data-mode="exp" role="tab" data-text="modes.exp"></button>
+      <button data-mode="free" role="tab" data-text="modes.free"></button>
+    </div>
+    <span id="midiStatus" class="status">…</span>
+    <span class="privacy">🔒 <span data-text="privacy"></span></span>
+  </header>
+
+  <main class="layout">
+    <div class="left">
+      <div class="video-wrap">
+        <video id="video" playsinline muted></video>
+        <canvas id="overlay"></canvas>
+        <div id="videoMsg" class="video-msg" hidden></div>
+      </div>
+      <div id="taskPanel" class="panel task">
+        <p id="taskText" class="instruction"></p>
+        <div id="dots" class="dots"></div>
+        <p id="keyHint" class="muted" data-text="task.keyHint" hidden></p>
+        <div class="task-actions">
+          <button id="startBtn" class="btn btn-primary btn-big" data-text="task.start"></button>
+          <button id="pad" class="btn pad" data-text="task.pad" hidden></button>
+        </div>
+      </div>
+      <p id="freeHint" class="panel free-hint" data-text="free.hint" hidden></p>
+    </div>
+
+    <div class="right">
+      <section id="liveView" class="panel">
+        <canvas id="cSpeed" class="chart chart-tall"></canvas>
+        <div id="scatterBox" hidden>
+          <canvas id="scatter" class="chart scatter"></canvas>
+          <button id="clearBtn" class="btn" data-text="free.clear"></button>
+        </div>
+        <p class="note" data-text="velocityNote"></p>
+        <p class="note" data-text="fpsNote"></p>
+      </section>
+
+      <section id="resultView" class="panel" hidden>
+        <h2 data-text="result.title"></h2>
+        <div class="res-grid">
+          <div>
+            <h3 id="resSpeedTitle"></h3>
+            <div id="resSpeed" class="bars"></div>
+          </div>
+          <div>
+            <h3 data-text="result.velocity"></h3>
+            <div id="resVel" class="bars"></div>
+          </div>
+        </div>
+        <p id="compare" class="compare"></p>
+        <canvas id="rSpeed" class="chart"></canvas>
+        <p class="note" data-text="velocityNote"></p>
+        <div class="task-actions">
+          <button id="againBtn" class="btn btn-primary" data-text="result.again"></button>
+          <button id="toFreeBtn" class="btn" data-text="result.free"></button>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <section class="explain-area">
+    <div id="explain"></div>
+  </section>
+
+  <details class="staff">
+    <summary data-text="staff.title"></summary>
+    <div class="row">
+      <label><span data-text="staff.camera"></span> <select id="camSelect"></select></label>
+      <label><input type="checkbox" id="mirror"> <span data-text="staff.mirror"></span></label>
+      <button id="dummyBtn" class="btn" data-text="staff.dummy"></button>
+      <label><input type="checkbox" id="mockMidi"> <span data-text="staff.mockmidi"></span></label>
+      <span id="camStatus" class="status">…</span>
+    </div>
+    <p data-text="staff.keys"></p>
+  </details>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

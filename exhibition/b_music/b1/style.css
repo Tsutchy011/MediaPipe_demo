@@ -1,0 +1,119 @@
+/* B-1 ピアノの強弱と指先速度のページ */
+
+.left,
+.right {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.task {
+  text-align: center;
+  min-height: 190px;
+  display: grid;
+  align-content: center;
+  gap: 8px;
+}
+
+.task-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.dots {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  min-height: 64px;
+}
+
+.dot {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  display: grid;
+  place-items: center;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.1;
+  text-align: center;
+}
+
+.dot.hit {
+  border-color: transparent;
+  color: #fff;
+}
+
+.dot.weak.hit {
+  background: var(--c1);
+}
+
+.dot.strong.hit {
+  background: var(--c2);
+}
+
+.pad {
+  min-width: 260px;
+  min-height: 64px;
+}
+
+.scatter {
+  height: 260px;
+}
+
+.res-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+
+.res-grid h3 {
+  font-size: 1rem;
+}
+
+.bars .bar-row {
+  grid-template-columns: 3.2em 1fr 5em;
+}
+
+.bar-fill.weak {
+  background: var(--c1);
+}
+
+.bar-fill.strong {
+  background: var(--c2);
+}
+
+.bar-row.mean {
+  font-weight: 700;
+  border-top: 1px solid var(--border);
+  padding-top: 4px;
+}
+
+.compare {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--c2);
+  margin: 10px 0 6px;
+}
+
+.free-hint {
+  font-size: 1.05rem;
+}
+
+.explain-area {
+  padding: 0 20px 14px;
+}
+
+#resultView h2 {
+  margin: 0 0 6px;
+}
+
+@media (max-width: 900px) {
+  .res-grid {
+    grid-template-columns: 1fr;
+  }
+}

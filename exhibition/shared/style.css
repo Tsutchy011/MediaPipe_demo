@@ -1,0 +1,512 @@
+/* 展示デモの共通スタイル（B・C のページとトップページ）。A の刺激画面は a_pupil/web/stimulus.css を使う。 */
+
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --text: #1c2129;
+  --muted: #5d6675;
+  --border: #d9dee6;
+  --accent: #0b6bcb;
+  --accent-text: #ffffff;
+  --ok: #1b8a4b;
+  --warn: #b26a00;
+  --error: #c62828;
+  /* グラフの色（Okabe-Ito の色を、白い背景で読めるように少し濃くしたもの） */
+  --c1: #0072b2;
+  --c2: #d55e00;
+  --c3: #009e73;
+  --c4: #cc79a7;
+  --c5: #8a6d00;
+  --chart-text: #39414d;
+  --chart-grid: rgba(28, 33, 41, 0.1);
+  --chart-axis: rgba(28, 33, 41, 0.45);
+  --radius: 14px;
+  --font: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", system-ui, sans-serif;
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.3;
+  margin: 0 0 0.4em;
+}
+
+p {
+  margin: 0 0 0.6em;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 0.85em;
+}
+
+/* ===== 上の帯 ===== */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 20px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.topbar h1 {
+  font-size: 1.5rem;
+  margin: 0;
+  flex: 1 1 auto;
+}
+
+.topbar .back {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.privacy {
+  font-size: 0.85rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ===== タブ（体験モード／研究デモモード） ===== */
+.tabs {
+  display: inline-flex;
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 4px;
+  gap: 4px;
+}
+
+.tabs button {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.95rem;
+  padding: 6px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.tabs button[aria-selected="true"] {
+  background: var(--surface);
+  color: var(--text);
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== ボタン ===== */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-weight: 700;
+  padding: 10px 20px;
+  border-radius: 12px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+}
+
+.btn:focus-visible,
+.tabs button:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.btn-big {
+  font-size: 1.4rem;
+  padding: 16px 36px;
+  border-radius: 16px;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ===== 説明の3つの欄と手順 ===== */
+.explain {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.explain-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.explain-card h3 {
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.explain-card p {
+  margin: 0;
+  white-space: pre-line;
+}
+
+.explain-icon {
+  font-size: 1.2rem;
+}
+
+.explain-compact .explain-card {
+  padding: 10px 12px;
+  font-size: 0.92rem;
+}
+
+.steps {
+  margin-top: 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+
+.steps h3 {
+  font-size: 1.05rem;
+}
+
+.steps ol {
+  margin: 0;
+  padding-left: 1.6em;
+}
+
+.steps li {
+  margin: 2px 0;
+}
+
+/* ===== 状態の表示 ===== */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.status::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.status-ok {
+  color: var(--ok);
+}
+
+.status-warn {
+  color: var(--warn);
+}
+
+.status-error {
+  color: var(--error);
+}
+
+/* ===== お知らせ・エラー ===== */
+.banner {
+  position: fixed;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  z-index: 1000;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: #1c2129;
+  color: #fff;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.2);
+  max-width: min(90vw, 900px);
+}
+
+.banner-warn {
+  background: #8a5300;
+}
+
+.banner-error {
+  background: var(--error);
+}
+
+.fatal {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 24, 30, 0.85);
+}
+
+.fatal-box {
+  background: var(--surface);
+  color: var(--text);
+  border-radius: var(--radius);
+  padding: 28px 32px;
+  max-width: 720px;
+}
+
+/* ===== カメラのページの並び ===== */
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+  gap: 18px;
+  padding: 18px 20px;
+  align-items: start;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+
+.video-wrap {
+  position: relative;
+  background: #111;
+  border-radius: var(--radius);
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+}
+
+.video-wrap video,
+.video-wrap canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.video-wrap .mirror {
+  transform: scaleX(-1);
+}
+
+.video-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  text-align: center;
+  padding: 20px;
+  font-size: 1.1rem;
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.chart {
+  width: 100%;
+  height: 220px;
+  display: block;
+}
+
+.chart-tall {
+  height: 300px;
+}
+
+.chart-short {
+  height: 150px;
+}
+
+/* 課題の大きな文字（「あいうえお」など） */
+.prompt {
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  margin: 8px 0;
+}
+
+.prompt .on {
+  color: var(--c2);
+}
+
+.prompt .done {
+  color: var(--muted);
+}
+
+.instruction {
+  font-size: 1.3rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.count {
+  font-size: 4rem;
+  font-weight: 800;
+  text-align: center;
+  color: var(--accent);
+  min-height: 1.2em;
+}
+
+.pop {
+  animation: pop 0.4s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: scale(1.5);
+    opacity: 0.3;
+  }
+
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.note {
+  font-size: 0.9rem;
+  color: var(--muted);
+  border-left: 4px solid var(--border);
+  padding: 4px 10px;
+  margin: 10px 0 0;
+}
+
+/* スタッフ用の欄（目立たせない） */
+.staff {
+  margin: 0 20px 20px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.staff summary {
+  cursor: pointer;
+}
+
+.staff .row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  align-items: center;
+  margin: 8px 0;
+}
+
+.staff select,
+.staff input {
+  font: inherit;
+}
+
+kbd {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 0.85em;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  padding: 0 6px;
+  background: var(--surface);
+}
+
+@media (max-width: 900px) {
+  .layout {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .explain {
+    grid-template-columns: 1fr;
+  }
+
+  html,
+  body {
+    font-size: 16px;
+  }
+}
+
+.video-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+/* 横に並ぶ小さな棒（ブレンドシェイプなど） */
+.bars {
+  display: grid;
+  gap: 6px;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 11em 1fr 3em;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+
+.bar-row small {
+  color: var(--muted);
+  font-size: 0.75rem;
+  display: block;
+  line-height: 1.1;
+}
+
+.bar-track {
+  height: 12px;
+  background: var(--surface-2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  width: 0;
+  background: var(--c1);
+  border-radius: 999px;
+  transition: width 0.08s linear;
+}
+
+.bar-val {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

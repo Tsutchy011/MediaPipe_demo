@@ -1,0 +1,71 @@
+/* C 顔の動き（C-1 発話モード）のページ */
+
+.left,
+.right {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.task {
+  text-align: center;
+  min-height: 210px;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+}
+
+.task-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.prompt span {
+  display: inline-block;
+  padding: 0 0.12em;
+  transition: color 0.1s, transform 0.1s;
+}
+
+.prompt span.on {
+  color: var(--c2);
+  transform: scale(1.25);
+}
+
+.prompt span.done {
+  color: #b7bec9;
+}
+
+.chart-mini {
+  height: 118px;
+}
+
+.blend-title {
+  margin-top: 8px;
+  font-size: 1rem;
+}
+
+.closures {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--c2);
+  margin: 6px 0 0;
+}
+
+.free-hint {
+  font-size: 1.05rem;
+}
+
+.explain-area {
+  padding: 0 20px 14px;
+}
+
+#resultView h3 {
+  margin: 10px 0 0;
+  font-size: 1.05rem;
+}
+
+#resultView h2 {
+  margin: 0;
+}

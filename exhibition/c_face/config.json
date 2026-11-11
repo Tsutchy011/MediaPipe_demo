@@ -1,0 +1,49 @@
+{
+  "_note": "C（顔の動き）の設定。★ は HUMAN が決める値で、いまは仮の値（WORKLOG.md 参照）",
+  "camera": {
+    "width": 1280,
+    "height": 720,
+    "facingMode": "user",
+    "mirror": true,
+    "fps": 30,
+    "delegate": "GPU"
+  },
+  "_delegate": "GPU で動かないときは CPU にする。ブレンドシェイプを CPU で計算したいときも CPU",
+  "metrics": {
+    "closeGap": 0.04,
+    "_closeGap": "唇の内側の上下の距離（両目の間を1）がこれより小さいと「閉じている」に近づく。実測で調整する",
+    "closeThreshold": 0.6,
+    "_closeThreshold": "唇の閉鎖がこれを超えたら「閉じた」と数える",
+    "minCloseSec": 0.03,
+    "_minCloseSec": "この長さ以上閉じていたら1回と数える（約30 fps では1コマ＝0.033秒。/b/ の閉鎖は1〜3コマしか写らないことがある）",
+    "mergeGapSec": 0.08,
+    "_mergeGapSec": "閉じている区間の間がこれより短ければ、1回にまとめる"
+  },
+  "task": {
+    "_": "★ 課題の提示の仕方（仮の値）",
+    "countdownSec": 3,
+    "vowels": [
+      "あ",
+      "い",
+      "う",
+      "え",
+      "お"
+    ],
+    "vowelSec": 1.2,
+    "byeWord": "バイバイ",
+    "byeSec": 3.0,
+    "tailSec": 0.8
+  },
+  "live": {
+    "windowSec": 8
+  },
+  "blendshapes": [
+    "jawOpen",
+    "mouthClose",
+    "mouthPucker",
+    "mouthFunnel",
+    "mouthStretchLeft",
+    "mouthPressLeft"
+  ],
+  "faceLostSec": 0.6
+}
