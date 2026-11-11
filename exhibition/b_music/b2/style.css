@@ -1,0 +1,113 @@
+/* B-2 腕の動きをお手本に合わせる */
+
+.left,
+.right {
+  display: grid;
+  gap: 14px;
+  align-content: start;
+}
+
+.task {
+  text-align: center;
+  display: grid;
+  gap: 6px;
+  min-height: 120px;
+  align-content: center;
+}
+
+.angle-now {
+  margin: 0;
+  color: var(--muted);
+}
+
+.angle-now b {
+  font-size: 2rem;
+  color: var(--text);
+  margin: 0 2px 0 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+}
+
+.figure-box {
+  text-align: center;
+}
+
+.figure-box h3 {
+  margin: 0 0 4px;
+  font-size: 1rem;
+}
+
+.figure {
+  width: 350px;
+  height: 175px;
+  display: block;
+  background: var(--surface-2);
+  border-radius: 12px;
+}
+
+.scores {
+  display: flex;
+  gap: 18px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.score-main,
+.score-sub {
+  display: grid;
+  gap: 2px;
+}
+
+.score-main b {
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--c2);
+}
+
+.score-main small {
+  color: var(--muted);
+}
+
+.score-sub b {
+  font-size: 1.2rem;
+}
+
+/* 一致度が高いとき：「お手本と同じように動けました！」 */
+.score-sub b.good {
+  font-size: 1.6rem;
+  color: #16a34a;
+}
+
+.read {
+  white-space: pre-line;
+}
+
+.low {
+  color: #b45309;
+}
+
+.task-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.file-btn {
+  cursor: pointer;
+}
+
+/* 体験中のお手本の図（正面と上からを並べるので横長） */
+#modelFig {
+  width: 460px;
+  height: 220px;
+}
+
+#cRecord {
+  height: 220px;
+}

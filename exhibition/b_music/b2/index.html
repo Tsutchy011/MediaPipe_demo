@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" href="data:,">
+  <title>B-2 音楽教育｜腕の動きをお手本に合わせる</title>
+  <link rel="stylesheet" href="../../shared/style.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- ===== はじめの説明（スライド。shared/slides.js がここの先頭に入れる） ===== -->
+  <section data-screen="intro" class="slides-screen">
+    <div class="slide-foot">
+      <span class="privacy-foot" data-text="privacy"></span>
+      <button id="freeBtn" class="btn btn-small" data-text="freeButton"></button>
+      <span class="staff-keys" data-text="staffKeys"></span>
+    </div>
+  </section>
+
+  <!-- ===== 体験・結果・自由に試す・お手本の記録 ===== -->
+  <div data-screen="main" hidden>
+    <header class="topbar">
+      <h1 data-text="title"></h1>
+      <span id="modeLabel" class="status status-idle"></span>
+      <button id="homeBtn" class="btn btn-small" data-text="home"></button>
+    </header>
+
+    <main class="layout">
+      <div class="left">
+        <div class="video-wrap">
+          <video id="video" playsinline muted></video>
+          <canvas id="overlay"></canvas>
+          <div id="videoMsg" class="video-msg" hidden></div>
+        </div>
+        <div class="panel task">
+          <p id="taskText" class="instruction"></p>
+          <p class="angle-now"><span data-text="task.angleNow"></span> <b id="angleNow">--</b><small>°</small></p>
+        </div>
+      </div>
+
+      <div class="right">
+        <section id="liveView" class="panel">
+          <div class="figure-row">
+            <div class="figure-box">
+              <h3 data-text="task.modelLabel"></h3>
+              <canvas id="modelFig" class="figure"></canvas>
+            </div>
+          </div>
+          <canvas id="cAngle" class="chart chart-tall"></canvas>
+        </section>
+
+        <section id="resultView" class="panel" hidden>
+          <h2 data-text="result.title"></h2>
+          <div class="scores">
+            <div class="score-main"><span data-text="result.score"></span><b id="vScore">--</b><small data-text="result.points"></small></div>
+            <div class="score-sub"><span id="lTiming" data-text="result.timing"></span><b id="vTiming">--</b></div>
+            <div class="score-sub"><span data-text="result.diff"></span><b id="vDiff">--</b></div>
+          </div>
+          <canvas id="cResult" class="chart chart-tall"></canvas>
+          <p id="lowQuality" class="low" data-text="result.lowQuality" hidden></p>
+          <div class="figure-row">
+            <div class="figure-box"><h3 data-text="result.replayModel"></h3><canvas id="figModel" class="figure"></canvas></div>
+            <div class="figure-box"><h3 data-text="result.replayYou"></h3><canvas id="figYou" class="figure"></canvas></div>
+          </div>
+          <p class="read" data-text="result.read"></p>
+          <div class="task-actions">
+            <button id="replayBtn" class="btn" data-text="result.replay"></button>
+            <button id="againBtn" class="btn" data-text="result.again"></button>
+            <button id="finishBtn" class="btn btn-primary" data-text="result.finish"></button>
+          </div>
+        </section>
+
+        <section id="recordView" class="panel" hidden>
+          <h2 data-text="record.title"></h2>
+          <canvas id="cRecord" class="chart"></canvas>
+          <div class="task-actions">
+            <button id="useBtn" class="btn btn-primary" data-text="record.use"></button>
+            <button id="saveBtn" class="btn" data-text="record.save"></button>
+            <button id="retryBtn" class="btn" data-text="record.retry"></button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <details class="staff">
+      <summary data-text="staff.title"></summary>
+      <div class="row">
+        <label><span data-text="staff.camera"></span> <select id="camSelect"></select></label>
+        <label><input type="checkbox" id="mirror"> <span data-text="staff.mirror"></span></label>
+        <button id="dummyBtn" class="btn" data-text="staff.dummy"></button>
+        <span id="camStatus" class="status">…</span>
+      </div>
+      <div class="row">
+        <span id="modelInfo" class="muted"></span>
+        <button id="recordBtn" class="btn" data-text="record.title"></button>
+        <label class="btn file-btn"><span data-text="record.load"></span><input id="loadFile" type="file" accept="application/json,.json" hidden></label>
+        <button id="resetModelBtn" class="btn" data-text="record.reset"></button>
+      </div>
+      <p data-text="staff.keys"></p>
+    </details>
+  </div>
+
+  <script type="module" src="main.js"></script>
+</body>
+</html>

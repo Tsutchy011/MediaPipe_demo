@@ -4,20 +4,23 @@
     "width": 1280,
     "height": 720,
     "facingMode": "user",
-    "mirror": true,
+    "mirror": "auto",
     "fps": 30,
     "delegate": "GPU"
   },
   "_delegate": "GPU で動かないときは CPU にする。ブレンドシェイプを CPU で計算したいときも CPU",
   "metrics": {
     "closeGap": 0.04,
-    "_closeGap": "唇の内側の上下の距離（両目の間を1）がこれより小さいと「閉じている」に近づく。実測で調整する",
-    "closeThreshold": 0.6,
-    "_closeThreshold": "唇の閉鎖がこれを超えたら「閉じた」と数える",
+    "_closeGap": "唇の内側の上下の距離（両目の間を1）を closeGap で割った値が「唇の閉じ具合」（0＝完全に閉じている。1 で頭打ち）。実測で調整する",
+    "closeThreshold": 0.4,
+    "_closeThreshold": "唇の閉じ具合がこれ以下なら「閉じた」とみなす",
     "minCloseSec": 0.03,
     "_minCloseSec": "この長さ以上閉じていたら1回と数える（約30 fps では1コマ＝0.033秒。/b/ の閉鎖は1〜3コマしか写らないことがある）",
     "mergeGapSec": 0.08,
-    "_mergeGapSec": "閉じている区間の間がこれより短ければ、1回にまとめる"
+    "_mergeGapSec": "閉じている区間の間がこれより短ければ、1回にまとめる",
+    "releaseSec": 0.35,
+    "releaseOpening": 0.12,
+    "_release": "閉じたあと releaseSec 秒以内に「口の開き」が releaseOpening を超えたら（/b/ のように、閉じてから開いたら）1回と数える。言い終わったあとに口を閉じたままのものは数えない"
   },
   "task": {
     "_": "★ 課題の提示の仕方（仮の値）",
@@ -45,5 +48,11 @@
     "mouthStretchLeft",
     "mouthPressLeft"
   ],
-  "faceLostSec": 0.6
+  "faceLostSec": 0.6,
+  "_camera": "mirror：\"auto\" はインカメ（Web カメラ・前面カメラ）なら左右反転、背面カメラなら反転しない（true / false で固定もできる）",
+  "anim": {
+    "align": "eyesNose",
+    "smoothFrames": 2
+  },
+  "_anim": "アニメーションの顔の固定（2026-11-11 HUMAN）。eyesNose：両目と鼻の上下（168・2）で、奥行きも使って3次元で顔の向きをそろえる（かしげ・首振り・うなずきで顔が回らない。既定）／eyes：両目の中心だけで、画面の上でそろえる。smoothFrames：前後何フレームでならすか"
 }

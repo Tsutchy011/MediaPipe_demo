@@ -69,3 +69,40 @@
 #resultView h2 {
   margin: 0;
 }
+
+/* 結果：グラフで見る／アニメーションで確かめる */
+.res-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.anim-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+.anim-canvas {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  max-height: 46vh;
+  display: block;
+  border-radius: 12px;
+  background: #121418;
+}
+
+.scrub {
+  width: 100%;
+  margin: 6px 0 2px;
+}
+
+.readout {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.95rem;
+  margin: 0 0 6px;
+}

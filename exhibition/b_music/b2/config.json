@@ -1,0 +1,78 @@
+{
+  "_note": "B-2（腕の動きをお手本に合わせる）の設定。★ は HUMAN が決める値で、いまは仮の値（WORKLOG.md 参照）",
+  "camera": {
+    "width": 1280,
+    "height": 720,
+    "facingMode": "user",
+    "mirror": "auto",
+    "fps": 30,
+    "delegate": "GPU",
+    "model": "pose"
+  },
+  "_camera": "model：pose（軽い。既定）か poseFull（正確だが重い）。mirror：\"auto\" はインカメなら左右反転",
+  "arm": "right",
+  "_arm": "測る腕（right／left。本人から見た右・左）。変えたら texts.json の「右腕」も直す",
+  "angleMode": "2d",
+  "_angleMode": "肘の角度の求め方。2d：画像の上の2次元の角度（既定。奥行きの推定は安定しないため。お手本の線も、3次元の弓の動きを正面のカメラから見た2次元の角度にしてある）／3d：MediaPipe の worldLandmarks（3次元）。変えると、記録したお手本は使えなくなる（記録し直す）",
+  "minVisibility": 0.5,
+  "guide": {
+    "centerX": [
+      0.3,
+      0.7
+    ],
+    "shoulderY": [
+      0.2,
+      0.6
+    ],
+    "shoulderWidth": [
+      0.1,
+      0.38
+    ],
+    "holdSec": 1.0
+  },
+  "_guide": "立ち位置の枠（カメラの画像に対する割合）。両肩の中点が centerX・shoulderY の中、肩幅が shoulderWidth の中で、腕が見えていれば OK。holdSec 続けて OK なら始める",
+  "task": {
+    "countdownSec": 3,
+    "leadSec": 1.0,
+    "ghost": true,
+    "_ghost": "true：カメラの映像の上に、お手本の腕と弓（青）を、自分の肩から重ねて出す。ghostDistM：カメラから人までの距離の目安（メートル。手が前に出たときに、手の丸を大きく描く強さ）",
+    "ghostDistM": 2.0
+  },
+  "_task": "★ leadSec：カメラの映像の上で、何秒先まで予告するか。いま動かす向き（矢印）、この弓の行き先（青い点線の腕）、leadSec 秒のうちに弓を返すなら U の字の矢印を出す",
+  "figure": {
+    "front": {
+      "yawDeg": 0,
+      "pitchDeg": 12,
+      "distM": 2.4
+    },
+    "top": {
+      "distM": 5
+    }
+  },
+  "_figure": "お手本の図（ヴァイオリンを弾く人）。左に「正面」（鏡に映した向き）、右に「上から」（前が画面の下）を並べる。yawDeg：右側をこちらへ回す角度、pitchDeg：見下ろす角度、distM：遠近の強さ（小さいほど強い）",
+  "model": {
+    "url": "model.json",
+    "recordSec": 10.5,
+    "rate": 30,
+    "smoothSec": 0.2,
+    "beatSec": 0.75,
+    "strokes": 3
+  },
+  "_model": "お手本：このブラウザで記録したもの → model.json（あれば）→ 決まった形 の順に使う。決まった形は、ヴァイオリンの弓の動き：全弓で全音符を strokes 回（ダウン → アップ → ダウン。1拍 beatSec 秒、全音符は 4 拍。はじめと終わりに 1 拍止める。10.5 秒）。記録するのは肘の角度だけで、図と重ねる腕は、角度から弓の動きのモデル（bowing.js）で描く。recordSec はスタッフが記録する長さ",
+  "metrics": {
+    "maxLagSec": 0.8,
+    "dtwBandSec": 0.5,
+    "scoreScaleDeg": "auto",
+    "gapFillSec": 0.3,
+    "minValidRatio": 0.6,
+    "goodScore": 80
+  },
+  "_metrics": "★ 一致度＝100 ×（1 − 時間のずれを dtwBandSec 秒まで許したときの角度のずれの平均 ÷ scoreScaleDeg）。scoreScaleDeg が auto なら、お手本の角度の幅の 0.6 倍（最小 15°）。タイミングは maxLagSec まで探す。goodScore 点以上なら「お手本と同じように動けました！」、下回るときだけタイミングのずれを出す",
+  "live": {
+    "yRange": [
+      30,
+      185
+    ],
+    "freeWindowSec": 10
+  }
+}

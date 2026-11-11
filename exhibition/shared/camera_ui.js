@@ -24,26 +24,47 @@ export class CameraInput {
    * @param {object} o.options            MediaPipe のオプション
    * @param {(result:any, tMs:number, info:object)=>void} o.onResult
    * @param {(tMs:number)=>any} o.dummy    ダミー入力の結果を作る関数
-   * @param {boolean} [o.mirror]           鏡のように左右反転して見せる
+   * @param {boolean|'auto'} [o.mirror]    鏡のように左右反転して見せる。'auto'（既定）はインカメ（Web カメラ・前面カメラ）なら反転、
+   *                                        背面カメラ（facingMode が environment）なら反転しない
+   * @param {(on:boolean)=>void} [o.onMirror] 反転のしかたが決まった・変わったときに呼ぶ（スタッフ用のチェックボックスの更新など）
    * @param {number} [o.fps]
    * @param {'GPU'|'CPU'} [o.delegate]
    * @param {object} [o.camera]            { width, height, facingMode }
    */
   constructor(o) {
-    this.o = { fps: 30, delegate: 'GPU', mirror: true, camera: {}, ...o };
+    this.o = { fps: 30, delegate: 'GPU', mirror: 'auto', camera: {}, ...o };
     this.mode = 'off'; // off | loading | camera | dummy | error
     this.landmarker = null;
     this.delegate = null;
     this.loop = null;
     this.dummySrc = null;
     this.videoSize = { w: 1280, h: 720 };
-    this.setMirror(this.o.mirror);
+    this.mirrorMode = this.o.mirror; // true | false | 'auto'
+    this._applyMirror(this.mirrorMode !== false); // 'auto' は、カメラが分かるまでインカメとみなす
   }
 
+  get mirrored() {
+    return this.o.video.classList.contains('mirror');
+  }
+
+  /** スタッフが手で切り替える（このあとカメラを替えても、この設定を使う） */
   setMirror(on) {
-    this.o.mirror = on;
+    this.mirrorMode = !!on;
+    this._applyMirror(!!on);
+  }
+
+  _applyMirror(on) {
     this.o.video.classList.toggle('mirror', on);
     this.o.overlay.classList.toggle('mirror', on);
+    this.o.onMirror?.(on);
+  }
+
+  /** 'auto' のとき：インカメなら反転、背面カメラなら反転しない */
+  _autoMirror() {
+    if (this.mirrorMode !== 'auto') return;
+    const track = this.o.video.srcObject?.getVideoTracks?.()[0];
+    const facing = track?.getSettings?.().facingMode;
+    this._applyMirror(facing !== 'environment');
   }
 
   _msg(text, actions = []) {
@@ -82,6 +103,7 @@ export class CameraInput {
       }
       this.videoSize = { w: this.o.video.videoWidth, h: this.o.video.videoHeight };
       this._fitOverlay();
+      this._autoMirror();
       if (!this.landmarker) {
         const { landmarker, delegate } = await createLandmarker(this.o.kind, this.o.options, { delegate: this.o.delegate });
         this.landmarker = landmarker;
@@ -119,6 +141,7 @@ export class CameraInput {
     this.mode = 'dummy';
     this.videoSize = { w: 1280, h: 720 };
     this._fitOverlay();
+    if (this.mirrorMode === 'auto') this._applyMirror(true); // ダミーは Web カメラとみなす
     this._msg('');
     this.dummySrc = new DummySource(this.o.dummy, (r, t) => this.o.onResult(r, t, { dummy: true, timeSource: 'dummy', size: this.videoSize }), { fps: this.o.fps });
     this.dummySrc.start();

@@ -48,6 +48,8 @@ export class DummyHand {
   constructor() {
     this.taps = []; // { t0, press, release, amp, velocity, fired }
     this.onImpact = null; // (t, velocity) => void   打鍵の瞬間（モック MIDI に使う）
+    this.yShift = 0; // 手全体を下にずらす量（仮想ピアノの線を越えて打鍵させるとき）
+    this.ampScale = 1; // 打鍵の振れ幅の倍率（仮想ピアノでは、線を越えて戻るよう大きく振る）
   }
 
   /** 弱い／強い打鍵を n 回予定する（start：秒、interval：秒） */
@@ -66,7 +68,8 @@ export class DummyHand {
     for (const tap of this.taps) {
       const tau = t - tap.t0;
       if (tau < 0 || tau > tap.press + tap.release) continue;
-      y = tau < tap.press ? (tap.amp * (1 - Math.cos((Math.PI * tau) / tap.press))) / 2 : (tap.amp * (1 + Math.cos((Math.PI * (tau - tap.press)) / tap.release))) / 2;
+      const amp = tap.amp * this.ampScale;
+      y = tau < tap.press ? (amp * (1 - Math.cos((Math.PI * tau) / tap.press))) / 2 : (amp * (1 + Math.cos((Math.PI * (tau - tap.press)) / tap.release))) / 2;
       if (tau >= tap.press && !tap.fired) {
         tap.fired = true;
         this.onImpact?.(tap.t0 + tap.press, tap.velocity);
@@ -83,7 +86,7 @@ export class DummyHand {
     const sway = 0.003 * Math.sin(t * 1.3);
     const lm = BASE.map(([x, y], i) => {
       const k = i >= 5 && i <= 8 ? (i - 4) / 4 : 0; // 人差し指は先ほど大きく動く
-      return { x: x + sway, y: y + dy * k * k, z: 0, visibility: 1 };
+      return { x: x + sway, y: y + this.yShift + dy * k * k, z: 0, visibility: 1 };
     });
     return { landmarks: [lm], worldLandmarks: [], handedness: [[{ categoryName: 'Right', score: 0.99, index: 1, displayName: '' }]], handednesses: [] };
   }

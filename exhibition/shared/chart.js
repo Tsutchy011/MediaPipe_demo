@@ -170,6 +170,7 @@ export class TimeChart {
     this.markers = [];
     this.strips = [];
     this.hlines = [];
+    this.points = []; // 点の印 {t, v, color, label, r}（いちばん大きくなったところ など）
     this.xRange = [0, 10];
     this.yCur = null;
     this.cursorT = null;
@@ -235,6 +236,7 @@ export class TimeChart {
     this.bands = [];
     this.markers = [];
     this.strips = [];
+    this.points = [];
   }
 
   _plotRect() {
@@ -464,6 +466,28 @@ export class TimeChart {
       }
     }
     ctx.restore();
+
+    // 点の印（再生中は、カーソルが来てから出す）
+    for (const p of this.points) {
+      if (!isNum(p.v) || p.t < t0 || p.t > t1 || p.t > tEnd) continue;
+      const x = X(p.t);
+      const y = Y(p.v);
+      const r = p.r || 6;
+      ctx.fillStyle = p.color || theme.text;
+      ctx.strokeStyle = p.stroke || 'rgba(0,0,0,0.65)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      if (p.label) {
+        ctx.fillStyle = p.labelColor || p.color || theme.text;
+        ctx.font = font(0.85, 'bold');
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(p.label, x, y - r - 3);
+      }
+    }
 
     // 縦線の印
     for (const m of this.markers) {

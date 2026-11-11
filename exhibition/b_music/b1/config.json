@@ -1,7 +1,14 @@
 {
   "_note": "B-1（ピアノの強弱と指先速度）の設定。★ は HUMAN が決める値で、いまは仮の値（WORKLOG.md 参照）",
-  "camera": { "width": 1280, "height": 720, "facingMode": "user", "mirror": false, "fps": 30, "delegate": "GPU" },
-  "_camera": "カメラは鍵盤の上〜斜め上から。上から見下ろすときは mirror: false（左右反転しない）",
+  "camera": {
+    "width": 1280,
+    "height": 720,
+    "facingMode": "user",
+    "mirror": "auto",
+    "fps": 30,
+    "delegate": "GPU"
+  },
+  "_camera": "mirror：\"auto\" はインカメ（Web カメラ・前面カメラ）なら左右反転、背面カメラなら反転しない。鍵盤を上から撮るカメラで反転させたくないときは false",
   "speed": {
     "landmark": 8,
     "_landmark": "8＝人差し指の先（既存デモと同じ）",
@@ -16,14 +23,67 @@
     "videoLatencyMs": 60,
     "_videoLatencyMs": "カメラが撮った時刻が分からないブラウザで、処理した時刻から引く値",
     "debounceSec": 0.15,
-    "keys": [" "],
-    "_keys": "MIDI がないときに打鍵の代わりにするキー（スペース）"
+    "keys": [
+      " "
+    ],
+    "_keys": "MIDI がないときに打鍵の代わりにするキー（スペース）",
+    "videoLag": "auto",
+    "videoLagInitMs": 80,
+    "_videoLag": "カメラの映像の遅れ。\"auto\" は、体験ごとに「弾いた指先がいちばん下に着いた時刻」と「MIDI の音の時刻」の差から推定し直す（最初は videoLagInitMs）。数値（ミリ秒）にすると固定"
   },
   "task": {
     "_": "★ 課題（仮の値）",
     "count": 3,
-    "order": ["weak", "strong"]
+    "order": [
+      "weak",
+      "strong"
+    ]
   },
-  "live": { "windowSec": 6, "yMin": 1500 },
-  "handLostSec": 0.6
+  "live": {
+    "windowSec": 6,
+    "yMin": 1500
+  },
+  "handLostSec": 0.6,
+  "sound": {
+    "enabled": true,
+    "volume": 0.8,
+    "_": "MIDI 鍵盤の音をブラウザで鳴らす（音源のない鍵盤のため）。鍵盤に音源があって二重に鳴るときは enabled を false"
+  },
+  "airPiano": {
+    "enabled": "auto",
+    "_enabled": "auto：MIDI 鍵盤がつながっていないとき（Web 版など）に、画面の仮想ピアノで弾けるようにする。true：いつも使う。false：使わない",
+    "notes": [
+      60,
+      62,
+      64,
+      65,
+      67,
+      69,
+      71,
+      72
+    ],
+    "labels": [
+      "ド",
+      "レ",
+      "ミ",
+      "ファ",
+      "ソ",
+      "ラ",
+      "シ",
+      "ド"
+    ],
+    "line": 0.6,
+    "_line": "打鍵の線の高さ（画面の上からの割合）。指先がこの線を上から下へ越えたら打鍵",
+    "bottom": 0.92,
+    "left": 0.06,
+    "right": 0.94,
+    "hysteresis": 0.04,
+    "minSpeed": 200,
+    "maxSpeed": 2500,
+    "_speed": "指先の速さ [画素/秒] を音の強さにする範囲。minSpeed 以下は最も弱く、maxSpeed 以上は最も強く鳴る",
+    "fingers": [
+      8
+    ],
+    "_fingers": "使う指先（8＝人差し指。親指〜小指は 4, 8, 12, 16, 20）"
+  }
 }

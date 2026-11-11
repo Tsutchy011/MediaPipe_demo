@@ -55,6 +55,11 @@ p {
   display: none !important;
 }
 
+/* texts.json の文の中の \n を改行として表示する */
+[data-text] {
+  white-space: pre-line;
+}
+
 .muted {
   color: var(--muted);
 }
@@ -509,4 +514,110 @@ kbd {
 .bar-val {
   text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+/* ===== スライド形式の説明（すべてのデモ共通。shared/slides.js） =====
+   Experiment_6 の実験 UI のように、灰色の画面に見出しと短い文を中央に出し、1枚ずつ進める */
+.slides-screen {
+  --slide-bg: rgb(89, 89, 89);
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto auto auto auto;
+  justify-items: center;
+  align-items: center;
+  padding: 6vh 8vw 2vh;
+  background: var(--slide-bg);
+  color: #f2f2f2;
+  text-align: center;
+}
+
+.slide {
+  max-width: 1200px;
+  display: grid;
+  gap: 4vh;
+  align-content: center;
+}
+
+.slide-title {
+  font-size: clamp(2.2rem, 4.2vw, 4rem);
+  font-weight: 800;
+  margin: 0;
+  color: #ffffff;
+}
+
+.slide-body p {
+  font-size: clamp(1.4rem, 2.3vw, 2.2rem);
+  line-height: 1.7;
+  margin: 0 0 0.4em;
+  white-space: pre-line;
+}
+
+.slide-nav {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  margin-top: 2vh;
+}
+
+.slide-nav .btn {
+  font-size: 1.3rem;
+}
+
+.slide-nav .btn-big {
+  min-width: 260px;
+  font-size: 1.6rem;
+}
+
+.slide-hint {
+  color: #d0d0d0;
+  font-size: 1.1rem;
+  margin: 10px 0 0;
+}
+
+.slide-dots {
+  display: flex;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.slide-dots span {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.slide-dots span.on {
+  background: #ffffff;
+}
+
+.slide-foot {
+  justify-self: stretch;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  color: #d8d8d8;
+}
+
+.slide-foot .status {
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.slide-foot .staff-keys {
+  color: #cfcfcf;
+  font-size: 0.85rem;
+  margin: 0 0 0 auto;
+}
+
+.btn-small {
+  padding: 4px 12px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.privacy-foot {
+  font-size: 0.85rem;
+  color: #e0e0e0;
 }

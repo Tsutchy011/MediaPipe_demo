@@ -1,0 +1,470 @@
+{
+ "source": "University of Iowa Electronic Music Studios, Musical Instrument Samples (Piano: Steinway & Sons model B)",
+ "url": "https://theremin.music.uiowa.edu/MISpiano.html",
+ "terms": "may be downloaded and used for any projects, without restrictions (https://theremin.music.uiowa.edu/MIS.html)",
+ "processing": "頭の無音を切り 3.5 秒に、最後 0.5 秒でフェードアウト、モノラル 44.1 kHz MP3 112 kbps、全体に +3.9 dB",
+ "samples": [
+  {
+   "note": 33,
+   "dyn": "pp",
+   "name": "A1",
+   "file": "piano_pp_A1.mp3",
+   "peakDb": -41.6
+  },
+  {
+   "note": 36,
+   "dyn": "pp",
+   "name": "C2",
+   "file": "piano_pp_C2.mp3",
+   "peakDb": -31.9
+  },
+  {
+   "note": 39,
+   "dyn": "pp",
+   "name": "Eb2",
+   "file": "piano_pp_Eb2.mp3",
+   "peakDb": -31.8
+  },
+  {
+   "note": 42,
+   "dyn": "pp",
+   "name": "Gb2",
+   "file": "piano_pp_Gb2.mp3",
+   "peakDb": -34.4
+  },
+  {
+   "note": 45,
+   "dyn": "pp",
+   "name": "A2",
+   "file": "piano_pp_A2.mp3",
+   "peakDb": -32.1
+  },
+  {
+   "note": 48,
+   "dyn": "pp",
+   "name": "C3",
+   "file": "piano_pp_C3.mp3",
+   "peakDb": -33.9
+  },
+  {
+   "note": 51,
+   "dyn": "pp",
+   "name": "Eb3",
+   "file": "piano_pp_Eb3.mp3",
+   "peakDb": -29.5
+  },
+  {
+   "note": 54,
+   "dyn": "pp",
+   "name": "Gb3",
+   "file": "piano_pp_Gb3.mp3",
+   "peakDb": -30.4
+  },
+  {
+   "note": 57,
+   "dyn": "pp",
+   "name": "A3",
+   "file": "piano_pp_A3.mp3",
+   "peakDb": -31.7
+  },
+  {
+   "note": 60,
+   "dyn": "pp",
+   "name": "C4",
+   "file": "piano_pp_C4.mp3",
+   "peakDb": -32.0
+  },
+  {
+   "note": 63,
+   "dyn": "pp",
+   "name": "Eb4",
+   "file": "piano_pp_Eb4.mp3",
+   "peakDb": -32.6
+  },
+  {
+   "note": 66,
+   "dyn": "pp",
+   "name": "Gb4",
+   "file": "piano_pp_Gb4.mp3",
+   "peakDb": -31.8
+  },
+  {
+   "note": 69,
+   "dyn": "pp",
+   "name": "A4",
+   "file": "piano_pp_A4.mp3",
+   "peakDb": -39.2
+  },
+  {
+   "note": 72,
+   "dyn": "pp",
+   "name": "C5",
+   "file": "piano_pp_C5.mp3",
+   "peakDb": -25.5
+  },
+  {
+   "note": 75,
+   "dyn": "pp",
+   "name": "Eb5",
+   "file": "piano_pp_Eb5.mp3",
+   "peakDb": -27.5
+  },
+  {
+   "note": 78,
+   "dyn": "pp",
+   "name": "Gb5",
+   "file": "piano_pp_Gb5.mp3",
+   "peakDb": -29.6
+  },
+  {
+   "note": 81,
+   "dyn": "pp",
+   "name": "A5",
+   "file": "piano_pp_A5.mp3",
+   "peakDb": -30.2
+  },
+  {
+   "note": 84,
+   "dyn": "pp",
+   "name": "C6",
+   "file": "piano_pp_C6.mp3",
+   "peakDb": -34.9
+  },
+  {
+   "note": 87,
+   "dyn": "pp",
+   "name": "Eb6",
+   "file": "piano_pp_Eb6.mp3",
+   "peakDb": -33.8
+  },
+  {
+   "note": 90,
+   "dyn": "pp",
+   "name": "Gb6",
+   "file": "piano_pp_Gb6.mp3",
+   "peakDb": -37.7
+  },
+  {
+   "note": 93,
+   "dyn": "pp",
+   "name": "A6",
+   "file": "piano_pp_A6.mp3",
+   "peakDb": -32.0
+  },
+  {
+   "note": 96,
+   "dyn": "pp",
+   "name": "C7",
+   "file": "piano_pp_C7.mp3",
+   "peakDb": -39.3
+  },
+  {
+   "note": 33,
+   "dyn": "mf",
+   "name": "A1",
+   "file": "piano_mf_A1.mp3",
+   "peakDb": -22.5
+  },
+  {
+   "note": 36,
+   "dyn": "mf",
+   "name": "C2",
+   "file": "piano_mf_C2.mp3",
+   "peakDb": -17.0
+  },
+  {
+   "note": 39,
+   "dyn": "mf",
+   "name": "Eb2",
+   "file": "piano_mf_Eb2.mp3",
+   "peakDb": -15.9
+  },
+  {
+   "note": 42,
+   "dyn": "mf",
+   "name": "Gb2",
+   "file": "piano_mf_Gb2.mp3",
+   "peakDb": -20.8
+  },
+  {
+   "note": 45,
+   "dyn": "mf",
+   "name": "A2",
+   "file": "piano_mf_A2.mp3",
+   "peakDb": -17.3
+  },
+  {
+   "note": 48,
+   "dyn": "mf",
+   "name": "C3",
+   "file": "piano_mf_C3.mp3",
+   "peakDb": -17.0
+  },
+  {
+   "note": 51,
+   "dyn": "mf",
+   "name": "Eb3",
+   "file": "piano_mf_Eb3.mp3",
+   "peakDb": -15.4
+  },
+  {
+   "note": 54,
+   "dyn": "mf",
+   "name": "Gb3",
+   "file": "piano_mf_Gb3.mp3",
+   "peakDb": -19.0
+  },
+  {
+   "note": 57,
+   "dyn": "mf",
+   "name": "A3",
+   "file": "piano_mf_A3.mp3",
+   "peakDb": -22.7
+  },
+  {
+   "note": 60,
+   "dyn": "mf",
+   "name": "C4",
+   "file": "piano_mf_C4.mp3",
+   "peakDb": -19.3
+  },
+  {
+   "note": 63,
+   "dyn": "mf",
+   "name": "Eb4",
+   "file": "piano_mf_Eb4.mp3",
+   "peakDb": -20.8
+  },
+  {
+   "note": 66,
+   "dyn": "mf",
+   "name": "Gb4",
+   "file": "piano_mf_Gb4.mp3",
+   "peakDb": -17.2
+  },
+  {
+   "note": 69,
+   "dyn": "mf",
+   "name": "A4",
+   "file": "piano_mf_A4.mp3",
+   "peakDb": -16.2
+  },
+  {
+   "note": 72,
+   "dyn": "mf",
+   "name": "C5",
+   "file": "piano_mf_C5.mp3",
+   "peakDb": -13.7
+  },
+  {
+   "note": 75,
+   "dyn": "mf",
+   "name": "Eb5",
+   "file": "piano_mf_Eb5.mp3",
+   "peakDb": -19.6
+  },
+  {
+   "note": 78,
+   "dyn": "mf",
+   "name": "Gb5",
+   "file": "piano_mf_Gb5.mp3",
+   "peakDb": -14.0
+  },
+  {
+   "note": 81,
+   "dyn": "mf",
+   "name": "A5",
+   "file": "piano_mf_A5.mp3",
+   "peakDb": -20.3
+  },
+  {
+   "note": 84,
+   "dyn": "mf",
+   "name": "C6",
+   "file": "piano_mf_C6.mp3",
+   "peakDb": -21.1
+  },
+  {
+   "note": 87,
+   "dyn": "mf",
+   "name": "Eb6",
+   "file": "piano_mf_Eb6.mp3",
+   "peakDb": -17.7
+  },
+  {
+   "note": 90,
+   "dyn": "mf",
+   "name": "Gb6",
+   "file": "piano_mf_Gb6.mp3",
+   "peakDb": -22.7
+  },
+  {
+   "note": 93,
+   "dyn": "mf",
+   "name": "A6",
+   "file": "piano_mf_A6.mp3",
+   "peakDb": -21.9
+  },
+  {
+   "note": 96,
+   "dyn": "mf",
+   "name": "C7",
+   "file": "piano_mf_C7.mp3",
+   "peakDb": -28.4
+  },
+  {
+   "note": 33,
+   "dyn": "ff",
+   "name": "A1",
+   "file": "piano_ff_A1.mp3",
+   "peakDb": -13.2
+  },
+  {
+   "note": 36,
+   "dyn": "ff",
+   "name": "C2",
+   "file": "piano_ff_C2.mp3",
+   "peakDb": -11.4
+  },
+  {
+   "note": 39,
+   "dyn": "ff",
+   "name": "Eb2",
+   "file": "piano_ff_Eb2.mp3",
+   "peakDb": -9.7
+  },
+  {
+   "note": 42,
+   "dyn": "ff",
+   "name": "Gb2",
+   "file": "piano_ff_Gb2.mp3",
+   "peakDb": -8.8
+  },
+  {
+   "note": 45,
+   "dyn": "ff",
+   "name": "A2",
+   "file": "piano_ff_A2.mp3",
+   "peakDb": -8.5
+  },
+  {
+   "note": 48,
+   "dyn": "ff",
+   "name": "C3",
+   "file": "piano_ff_C3.mp3",
+   "peakDb": -8.3
+  },
+  {
+   "note": 51,
+   "dyn": "ff",
+   "name": "Eb3",
+   "file": "piano_ff_Eb3.mp3",
+   "peakDb": -8.5
+  },
+  {
+   "note": 54,
+   "dyn": "ff",
+   "name": "Gb3",
+   "file": "piano_ff_Gb3.mp3",
+   "peakDb": -8.0
+  },
+  {
+   "note": 57,
+   "dyn": "ff",
+   "name": "A3",
+   "file": "piano_ff_A3.mp3",
+   "peakDb": -10.2
+  },
+  {
+   "note": 60,
+   "dyn": "ff",
+   "name": "C4",
+   "file": "piano_ff_C4.mp3",
+   "peakDb": -4.0
+  },
+  {
+   "note": 63,
+   "dyn": "ff",
+   "name": "Eb4",
+   "file": "piano_ff_Eb4.mp3",
+   "peakDb": -8.1
+  },
+  {
+   "note": 66,
+   "dyn": "ff",
+   "name": "Gb4",
+   "file": "piano_ff_Gb4.mp3",
+   "peakDb": -6.0
+  },
+  {
+   "note": 69,
+   "dyn": "ff",
+   "name": "A4",
+   "file": "piano_ff_A4.mp3",
+   "peakDb": -5.5
+  },
+  {
+   "note": 72,
+   "dyn": "ff",
+   "name": "C5",
+   "file": "piano_ff_C5.mp3",
+   "peakDb": -1.0
+  },
+  {
+   "note": 75,
+   "dyn": "ff",
+   "name": "Eb5",
+   "file": "piano_ff_Eb5.mp3",
+   "peakDb": -6.1
+  },
+  {
+   "note": 78,
+   "dyn": "ff",
+   "name": "Gb5",
+   "file": "piano_ff_Gb5.mp3",
+   "peakDb": -4.0
+  },
+  {
+   "note": 81,
+   "dyn": "ff",
+   "name": "A5",
+   "file": "piano_ff_A5.mp3",
+   "peakDb": -7.1
+  },
+  {
+   "note": 84,
+   "dyn": "ff",
+   "name": "C6",
+   "file": "piano_ff_C6.mp3",
+   "peakDb": -7.2
+  },
+  {
+   "note": 87,
+   "dyn": "ff",
+   "name": "Eb6",
+   "file": "piano_ff_Eb6.mp3",
+   "peakDb": -2.8
+  },
+  {
+   "note": 90,
+   "dyn": "ff",
+   "name": "Gb6",
+   "file": "piano_ff_Gb6.mp3",
+   "peakDb": -7.8
+  },
+  {
+   "note": 93,
+   "dyn": "ff",
+   "name": "A6",
+   "file": "piano_ff_A6.mp3",
+   "peakDb": -7.2
+  },
+  {
+   "note": 96,
+   "dyn": "ff",
+   "name": "C7",
+   "file": "piano_ff_C7.mp3",
+   "peakDb": -10.5
+  }
+ ]
+}

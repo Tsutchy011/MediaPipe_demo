@@ -117,3 +117,132 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* 仮想ピアノの鍵盤（左右反転しないキャンバス。video・overlay と同じ大きさで重ねる） */
+#keys {
+  pointer-events: none;
+}
+
+.air-note {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+/* 結果の図：鳴った瞬間にそろえた指の速さ ／ 指の速さと音の強さの対応 */
+.res-figs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.res-figs h3 {
+  font-size: 1rem;
+  margin: 4px 0;
+}
+
+.res-chart {
+  height: 300px;
+}
+
+.legend {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+}
+
+.legend .sw {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-left: 10px;
+}
+
+.legend .sw.weak {
+  background: var(--c1);
+}
+
+.legend .sw.strong {
+  background: var(--c2);
+}
+
+.compare {
+  white-space: pre-line;
+}
+
+@media (max-width: 1100px) {
+  .res-figs {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 結果：弱く弾いたとき／強く弾いたときを左右に並べる（コマ送りの指先と、速さ・音の強さの棒） */
+.cmp {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.cmp-col {
+  display: grid;
+  gap: 6px;
+  align-content: start;
+}
+
+.cmp-title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.cmp-title.weak {
+  color: var(--c1);
+}
+
+.cmp-title.strong {
+  color: var(--c2);
+}
+
+.strobe {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  max-height: 34vh;
+  display: block;
+  border-radius: 12px;
+  background: #121418;
+}
+
+.meter {
+  display: grid;
+  grid-template-columns: 5.5em 1fr 4.5em;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+}
+
+.meter b {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: 1.1rem;
+}
+
+.meter .bar-track {
+  height: 16px;
+}
+
+.meter {
+  grid-template-columns: 7.5em 1fr 7em;
+}
+
+.meter-sub {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--muted);
+  line-height: 1.1;
+}
+
+.meter b {
+  white-space: nowrap;
+  font-size: 1rem;
+}

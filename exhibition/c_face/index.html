@@ -9,84 +9,118 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="topbar">
-    <a class="back" href="../index.html" data-text="back"></a>
-    <h1 data-text="title"></h1>
-    <div class="tabs" id="tabs" role="tablist">
-      <button data-mode="exp" role="tab" data-text="modes.exp"></button>
-      <button data-mode="free" role="tab" data-text="modes.free"></button>
+  <!-- ===== はじめの説明（スライド。shared/slides.js がここの先頭に入れる） ===== -->
+  <section data-screen="intro" class="slides-screen">
+    <div class="slide-foot">
+      <span class="privacy-foot" data-text="privacy"></span>
+      <button id="freeBtn" class="btn btn-small" data-text="freeButton"></button>
+      <span class="staff-keys" data-text="staffKeys"></span>
     </div>
-    <span class="privacy">🔒 <span data-text="privacy"></span></span>
-  </header>
-
-  <main class="layout">
-    <div class="left">
-      <div class="video-wrap">
-        <video id="video" playsinline muted></video>
-        <canvas id="overlay"></canvas>
-        <div id="videoMsg" class="video-msg" hidden></div>
-      </div>
-      <div id="taskPanel" class="panel task">
-        <p id="taskText" class="instruction"></p>
-        <div id="prompt" class="prompt"></div>
-        <div id="count" class="count"></div>
-        <div class="task-actions">
-          <button id="startBtn" class="btn btn-primary btn-big" data-text="task.start"></button>
-        </div>
-      </div>
-      <p id="freeHint" class="panel free-hint" data-text="free.hint" hidden></p>
-    </div>
-
-    <div class="right">
-      <!-- いまの口の動き（リアルタイム） -->
-      <section id="liveView" class="panel">
-        <h3 data-text="live.title"></h3>
-        <canvas id="cOpen" class="chart chart-mini"></canvas>
-        <canvas id="cWidth" class="chart chart-mini"></canvas>
-        <canvas id="cClose" class="chart chart-mini"></canvas>
-        <p class="muted small" data-text="metrics.unit"></p>
-        <h3 class="blend-title" data-text="blend.title"></h3>
-        <div id="blend" class="bars"></div>
-      </section>
-
-      <!-- けっか -->
-      <section id="resultView" class="panel" hidden>
-        <h2 data-text="result.title"></h2>
-        <h3 data-text="result.aiueo"></h3>
-        <canvas id="rA1" class="chart chart-mini"></canvas>
-        <canvas id="rA2" class="chart chart-mini"></canvas>
-        <canvas id="rA3" class="chart chart-mini"></canvas>
-        <h3 id="byeTitle"></h3>
-        <canvas id="rB1" class="chart chart-mini"></canvas>
-        <canvas id="rB2" class="chart chart-mini"></canvas>
-        <canvas id="rB3" class="chart chart-mini"></canvas>
-        <p id="closures" class="closures"></p>
-        <p class="muted" data-text="result.closuresHint"></p>
-        <p class="note" data-text="note"></p>
-        <div class="task-actions">
-          <button id="againBtn" class="btn btn-primary" data-text="result.again"></button>
-          <button id="toFreeBtn" class="btn" data-text="result.free"></button>
-        </div>
-      </section>
-    </div>
-  </main>
-
-  <section class="explain-area">
-    <div id="explain"></div>
-    <p class="note" data-text="note"></p>
   </section>
 
-  <details class="staff">
-    <summary data-text="staff.title"></summary>
-    <div class="row">
-      <label><span data-text="staff.camera"></span> <select id="camSelect"></select></label>
-      <label><input type="checkbox" id="mirror"> <span data-text="staff.mirror"></span></label>
-      <label><input type="checkbox" id="mesh"> <span data-text="staff.mesh"></span></label>
-      <button id="dummyBtn" class="btn" data-text="staff.dummy"></button>
-      <span id="camStatus" class="status">…</span>
-    </div>
-    <p data-text="staff.keys"></p>
-  </details>
+  <!-- ===== 体験・結果・自由に試す ===== -->
+  <div data-screen="main" hidden>
+    <header class="topbar">
+      <h1 data-text="title"></h1>
+      <span id="modeLabel" class="status status-idle"></span>
+      <button id="homeBtn" class="btn btn-small" data-text="home"></button>
+    </header>
+
+    <main class="layout">
+      <div class="left">
+        <div class="video-wrap">
+          <video id="video" playsinline muted></video>
+          <canvas id="overlay"></canvas>
+          <div id="videoMsg" class="video-msg" hidden></div>
+        </div>
+        <div id="taskPanel" class="panel task">
+          <p id="taskText" class="instruction"></p>
+          <div id="prompt" class="prompt"></div>
+          <div id="count" class="count"></div>
+        </div>
+        <p id="freeHint" class="panel free-hint" data-text="free.hint" hidden></p>
+      </div>
+
+      <div class="right">
+        <!-- いまの口の動き（リアルタイム） -->
+        <section id="liveView" class="panel">
+          <h3 data-text="live.title"></h3>
+          <canvas id="cOpen" class="chart chart-mini"></canvas>
+          <canvas id="cWidth" class="chart chart-mini"></canvas>
+          <canvas id="cClose" class="chart chart-mini"></canvas>
+          <p class="muted small" data-text="metrics.unit"></p>
+          <h3 class="blend-title" data-text="blend.title"></h3>
+          <div id="blend" class="bars"></div>
+        </section>
+
+        <!-- 結果（グラフで見る／アニメーションで確かめる） -->
+        <section id="resultView" class="panel" hidden>
+          <div class="res-head">
+            <h2 data-text="result.title"></h2>
+            <div class="tabs" id="resTabs" role="tablist">
+              <button data-mode="graph" role="tab" data-text="result.tabs.graph"></button>
+              <button data-mode="anim" role="tab" data-text="result.tabs.anim"></button>
+            </div>
+          </div>
+
+          <div id="resGraph">
+            <h3 data-text="result.aiueo"></h3>
+            <canvas id="rA1" class="chart chart-mini"></canvas>
+            <canvas id="rA2" class="chart chart-mini"></canvas>
+            <canvas id="rA3" class="chart chart-mini"></canvas>
+            <h3 id="byeTitle"></h3>
+            <canvas id="rB1" class="chart chart-mini"></canvas>
+            <canvas id="rB2" class="chart chart-mini"></canvas>
+            <canvas id="rB3" class="chart chart-mini"></canvas>
+          </div>
+
+          <div id="resAnim" hidden>
+            <div class="anim-controls">
+              <div class="tabs" id="animTask" role="tablist">
+                <button data-mode="aiueo" role="tab" data-text="anim.aiueo"></button>
+                <button data-mode="bye" role="tab" data-text="anim.bye"></button>
+              </div>
+              <button id="playBtn" class="btn btn-small"></button>
+              <label class="small"><span data-text="anim.speed"></span>
+                <select id="animSpeed">
+                  <option value="1">1×</option>
+                  <option value="0.5" selected>0.5×</option>
+                  <option value="0.25">0.25×</option>
+                </select>
+              </label>
+            </div>
+            <canvas id="animCanvas" class="anim-canvas"></canvas>
+            <input type="range" id="scrub" class="scrub" min="0" max="1000" value="0" aria-label="再生の位置">
+            <p id="animReadout" class="readout"></p>
+            <canvas id="aOpen" class="chart chart-mini"></canvas>
+            <canvas id="aWidth" class="chart chart-mini"></canvas>
+            <canvas id="aClose" class="chart chart-mini"></canvas>
+            <p class="muted small" data-text="anim.note"></p>
+          </div>
+
+          <p id="closures" class="closures"></p>
+          <p class="muted" data-text="result.closuresHint"></p>
+          <p class="note" data-text="note"></p>
+          <div class="task-actions">
+            <button id="againBtn" class="btn" data-text="result.again"></button>
+            <button id="finishBtn" class="btn btn-primary" data-text="result.finish"></button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <details class="staff">
+      <summary data-text="staff.title"></summary>
+      <div class="row">
+        <label><span data-text="staff.camera"></span> <select id="camSelect"></select></label>
+        <label><input type="checkbox" id="mirror"> <span data-text="staff.mirror"></span></label>
+        <label><input type="checkbox" id="mesh"> <span data-text="staff.mesh"></span></label>
+        <button id="dummyBtn" class="btn" data-text="staff.dummy"></button>
+        <span id="camStatus" class="status">…</span>
+      </div>
+      <p data-text="staff.keys"></p>
+    </details>
+  </div>
 
   <script type="module" src="main.js"></script>
 </body>

@@ -44,16 +44,22 @@ export class MidiInput extends EventTarget {
   }
 
   _onMessage(e) {
-    const [status, note, velocity] = e.data;
-    if ((status & 0xf0) === 0x90 && velocity > 0) {
-      const t = Number.isFinite(e.timeStamp) && e.timeStamp > 0 ? e.timeStamp : performance.now();
-      this.onNoteOn?.({ t, note, velocity, source: 'midi', device: e.target?.name || '' });
+    const [status, a, b] = e.data;
+    const cmd = status & 0xf0;
+    const t = Number.isFinite(e.timeStamp) && e.timeStamp > 0 ? e.timeStamp : performance.now();
+    if (cmd === 0x90 && b > 0) {
+      this.onNoteOn?.({ t, note: a, velocity: b, source: 'midi', device: e.target?.name || '' });
+    } else if (cmd === 0x80 || (cmd === 0x90 && b === 0)) {
+      this.onNoteOff?.({ t, note: a });
+    } else if (cmd === 0xb0 && a === 64) {
+      this.onSustain?.(b >= 64); // ダンパーペダル
     }
   }
 
-  /** モックの note-on を出す（ダミー入力・キーボードから） */
+  /** モックの note-on を出す（ダミー入力・キーボードから）。少しあとに note-off も出す */
   mockNoteOn(velocity, t = performance.now(), note = 60) {
     this.onNoteOn?.({ t, note, velocity: Math.max(1, Math.min(127, Math.round(velocity))), source: 'mock', device: 'mock' });
+    setTimeout(() => this.onNoteOff?.({ t: performance.now(), note }), 400);
   }
 
   get connected() {
