@@ -5,6 +5,10 @@
 //   唇の横幅 ：左右の口角(61, 291)の距離
 //   唇の閉じ具合：内側の唇の上下 9 組の点の距離を closeGap で割った値（1 で頭打ち）の平均。
 //               0＝完全に閉じている、1＝開いている（「口の開き」と同じ向きにして、感覚と合わせる）
+//               closeRef：'eye'（今まで）＝両目の間の距離で割る（3 次元）。
+//                         'mid'＝目の中点と鼻の下（2）の距離で割る（画像の上の 2 次元。closeGapMid を使う）。
+//                         内側の唇のすき間も、目から鼻の下も縦の長さなので、映像の縦横の比のずれや、カメラを下から向けて
+//                         縦が縮んで見えるときにも、割り算で打ち消し合う（2026-11-12：スマホの前面カメラで閉じても約 0.4 になった）。
 // 両目の位置は、それぞれの目の目頭と目尻の中点（33・133、362・263）。座標は x・y を画素に、z も x と同じ尺度で使う。
 
 import { LIPS } from '../shared/mediapipe.js';
@@ -25,7 +29,7 @@ export const FACE_OVAL = [10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 
 export const EYES = [33, 133, 362, 263];
 
 /** ランドマーク（0〜1 の座標）から指標を計算する。目が見つからなければ null */
-export function faceMetrics(lm, w, h, { closeGap = 0.04 } = {}) {
+export function faceMetrics(lm, w, h, { closeGap = 0.04, closeRef = 'eye', closeGapMid = 0.055 } = {}) {
   const P = (i) => {
     const p = lm[i];
     return p ? [p.x * w, p.y * h, (p.z || 0) * w] : null;
@@ -36,13 +40,19 @@ export function faceMetrics(lm, w, h, { closeGap = 0.04 } = {}) {
   const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
   const eye = d(mid(pts[0], pts[1]), mid(pts[2], pts[3]));
   if (!(eye > 1e-6)) return null;
+  // 唇の閉じ具合の割る長さ：'mid' は、目の中点と鼻の下（2）の 2 次元の距離（縦の長さ）
+  const d2 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+  const sub = P(2);
+  const mid2 = sub ? d2(mid(mid(pts[0], pts[1]), mid(pts[2], pts[3])), sub) : NaN;
+  const useMid = closeRef === 'mid' && mid2 > 1e-6;
   let c = 0;
   let n = 0;
   for (const [u, l] of INNER_PAIRS) {
     const a = P(u);
     const b = P(l);
     if (!a || !b) continue;
-    c += Math.min(1, Math.max(0, d(a, b) / eye / closeGap));
+    const g = useMid ? d2(a, b) / mid2 / closeGapMid : d(a, b) / eye / closeGap;
+    c += Math.min(1, Math.max(0, g));
     n++;
   }
   return {
@@ -50,6 +60,7 @@ export function faceMetrics(lm, w, h, { closeGap = 0.04 } = {}) {
     width: d(pts[6], pts[7]) / eye,
     closure: n ? c / n : NaN, // 0＝完全に閉じている
     eyePx: eye,
+    midPx: mid2, // 目の中点と鼻の下の距離（画素。確かめる用）
   };
 }
 

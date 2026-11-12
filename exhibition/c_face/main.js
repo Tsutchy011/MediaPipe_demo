@@ -17,7 +17,7 @@ import { FaceRecorder, drawLineFace } from './replay.js';
 
 const DEFAULTS = {
   camera: { width: 1280, height: 720, facingMode: 'user', mirror: 'auto', fps: 30, delegate: 'GPU' },
-  metrics: { closeGap: 0.04, closeThreshold: 0.4, minCloseSec: 0.03, mergeGapSec: 0.08, releaseSec: 0.35, releaseOpening: 0.12 },
+  metrics: { closeRef: 'mid', closeGapMid: 0.055, closeGap: 0.04, closeThreshold: 0.4, minCloseSec: 0.03, mergeGapSec: 0.08, releaseSec: 0.35, releaseOpening: 0.12 },
   task: { countdownSec: 3, vowels: ['あ', 'い', 'う', 'え', 'お'], vowelSec: 1.2, byeWord: 'バイバイ', byeSec: 3, tailSec: 0.8 },
   live: { windowSec: 8 },
   blendshapes: [], // ブレンドシェイプの棒を出すときは名前を並べる（例：'jawOpen', 'mouthClose'）。空なら出さず、計算もしない
@@ -113,6 +113,8 @@ function onResult(result, tMs, info) {
   const lm = result.faceLandmarks?.[0];
   drawOverlay(lm, info.size.w, info.size.h);
   const m = lm ? faceMetrics(lm, info.size.w, info.size.h, cfg.metrics) : null;
+  // 確かめる用（テストのスクリプトが window.__faceDebug を用意したときだけ）：計算に使った大きさと、映像の大きさ
+  window.__faceDebug?.push({ w: info.size.w, h: info.size.h, vw: $('#video').videoWidth, vh: $('#video').videoHeight, closure: m?.closure });
   S.open.push(t, m?.opening);
   S.width.push(t, m?.width);
   S.close.push(t, m?.closure);
