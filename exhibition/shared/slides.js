@@ -6,6 +6,8 @@
 //   "slides": [ { "title": "…", "body": ["…", "…"] }, … ]
 //   "slideNav": { "next": "次へ", "prev": "戻る", "start": "開始", "keyHint": "…", "keyHintStart": "…" }
 // 体の文の中の \n は改行になる。キー操作（スペース・→・←・Esc）は、各ページで next / prev / first を呼ぶ。
+// キーに触れる文（「スペースキーを押してください」、keyHint など）は、{ "pc": …, "touch": … } で、
+// スマホ・タブレット用の文に切り替える（shared/config.js）。keyHint を "" にすると、その行は出さない。
 //
 // HTML 側：<section data-screen="intro" class="slides-screen"> … <div class="slide-foot">（状態など）</div></section>
 
@@ -44,7 +46,8 @@ export class Slides {
     this.body.replaceChildren(...(Array.isArray(s.body) ? s.body : [s.body]).map((line) => h('p', {}, line)));
     this.prevBtn.hidden = this.index === 0;
     this.nextBtn.textContent = this.isLast ? this.labels.start : this.labels.next;
-    this.hint.textContent = this.isLast ? this.labels.keyHintStart : this.labels.keyHint;
+    this.hint.textContent = (this.isLast ? this.labels.keyHintStart : this.labels.keyHint) || '';
+    this.hint.hidden = !this.hint.textContent;
     this.dots.replaceChildren(...this.slides.map((_, i) => h('span', { class: i === this.index ? 'on' : '' })));
   }
 

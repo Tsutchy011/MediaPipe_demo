@@ -749,6 +749,10 @@ $('#dummyBtn').addEventListener('click', () => {
   cam.startDummy();
   refreshStaff();
 });
+// お手本の記録：スペースキーのないスマホ・タブレットでは、映像をタップして記録を始める（パソコンでもクリックで始められる）
+$('.video-wrap').addEventListener('click', () => {
+  if (ui.mode === 'record' && ui.phase === 'recReady') beginRecording();
+});
 
 window.addEventListener('keydown', (e) => {
   const tag = (e.target?.tagName || '').toLowerCase();

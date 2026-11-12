@@ -574,6 +574,11 @@ kbd {
   margin: 10px 0 0;
 }
 
+/* texts.json で "" にした文（スマホでは出さない、キー操作の説明など）は、場所も取らない */
+[data-text]:empty {
+  display: none;
+}
+
 .slide-dots {
   display: flex;
   gap: 10px;
@@ -620,4 +625,21 @@ kbd {
 .privacy-foot {
   font-size: 0.85rem;
   color: #e0e0e0;
+}
+
+/* スマホ（幅の狭い画面）：状態の表示（MIDI など）は折り返して画面からはみ出さないように、
+   スライドのボタンは横に並べたまま画面の幅に収める */
+@media (max-width: 600px) {
+  .status {
+    white-space: normal;
+    border-radius: 12px;
+  }
+
+  .slide-nav .btn {
+    white-space: nowrap;
+  }
+
+  .slide-nav .btn-big {
+    min-width: min(260px, 55vw);
+  }
 }

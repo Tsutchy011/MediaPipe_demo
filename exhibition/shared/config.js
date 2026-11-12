@@ -6,8 +6,13 @@
 // HTML 側では、次の属性で texts.json の文を差し込める。
 //   data-text="intro.title"       … 文字列をそのまま入れる（\n は改行として表示）
 //   data-text-list="intro.steps"  … 配列を <li> にして入れる（ol / ul に付ける）
+//
+// 端末で変えたい文（「スペースキーを押して」⇔「タップして」など）は、texts.json で文字列の代わりに
+//   { "pc": "準備ができたら、スペースキーを押してください。", "touch": "準備ができたら、「開始」をタップしてください。" }
+// と書く。スマホ・タブレット（指で操作する端末）では touch、それ以外では pc の文になる。"" にした文は出さない。
+// 確認用に、URL に ?touch=1 を付けると touch の文、?touch=0 で pc の文になる。
 
-import { isNum } from './util.js';
+import { isNum, isTouchDevice } from './util.js';
 
 /** JSON を読む。失敗したら、スタッフが直せるように理由の分かる日本語のエラーにする */
 export async function loadJSON(url) {
@@ -100,9 +105,20 @@ export class Texts {
   }
 }
 
-/** texts.json を読む */
+/** texts.json を読む（{ "pc": …, "touch": … } の文は、いまの端末の文にしておく） */
 export async function loadTexts(url = 'texts.json') {
-  return new Texts(await loadJSON(url));
+  return new Texts(forDevice(await loadJSON(url), isTouchDevice()));
+}
+
+/** { "pc": …, "touch": … } の形の値を、端末に合わせて片方にする（配列や入れ子の中も） */
+export function forDevice(v, touch) {
+  if (Array.isArray(v)) return v.map((x) => forDevice(x, touch));
+  if (!isPlainObject(v)) return v;
+  const keys = Object.keys(v).filter((k) => !k.startsWith('_'));
+  if (keys.length && keys.every((k) => k === 'pc' || k === 'touch')) return touch ? (v.touch ?? v.pc) : (v.pc ?? v.touch);
+  const out = {};
+  for (const [k, x] of Object.entries(v)) out[k] = forDevice(x, touch);
+  return out;
 }
 
 /** 数値の設定値を取り出す（無効なら fallback） */

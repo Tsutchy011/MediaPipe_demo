@@ -25,6 +25,15 @@ export function param(name, fallback = null) {
   return params.has(name) ? params.get(name) : fallback;
 }
 
+/**
+ * 指で操作する端末（スマホ・タブレット）か。キーボードがない前提で、texts.json の文を切り替えるのに使う。
+ * 確認用に、URL の ?touch=1 でタッチの端末、?touch=0 でパソコンとして扱う。
+ */
+export function isTouchDevice() {
+  if (params.has('touch')) return flag('touch');
+  return typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
+}
+
 /** 中断できる待ち時間。signal が中断されたら AbortError で終わる */
 export function sleep(ms, signal) {
   return new Promise((resolve, reject) => {
