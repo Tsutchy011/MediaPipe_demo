@@ -100,15 +100,39 @@ midi.start();
 
 // ===== 空中の仮想ピアノ（MIDI 鍵盤がないとき：Web 版など） =====
 // 指先が鍵盤の線を上から下へ越えたら打鍵。そのときの指先の速さで音の強さを決める
+// 音を鳴らす時刻（2026-11-12 HUMAN：音が映像より1コマ早い）。推定に使ったコマを描いても（syncFrame）、その絵が画面に出るのは
+// 次の描画のあと（スマホでは、さらに1〜2回分あと）。音は、鳴らすとすぐ（音が出るまでの遅れのあと）聞こえるので、少し遅らせてそろえる。
+//   airPiano.soundDelayMs：ミリ秒の数か 'auto'。'auto' は、映像の1コマ分（いまの fps から）から、音が出るまでの遅れ
+//   （AudioContext の baseLatency＋outputLatency。分からなければ 0）を引いた時間（0〜80 ms）。0 で遅らせない。
+//   鍵が光る・沈むのは、絵と同じときのまま。離鍵（noteOff）も同じだけ遅らせて、順番が入れかわらないようにする
+function airSoundDelay() {
+  const d = cfg.airPiano.soundDelayMs;
+  if (d === 'auto') {
+    const frame = 1000 / (cam.fps > 5 ? cam.fps : 30);
+    const audio = ((synth.ctx?.baseLatency || 0) + (synth.ctx?.outputLatency || 0)) * 1000;
+    return Math.max(0, Math.min(80, frame - audio));
+  }
+  return Math.max(0, Number(d) || 0);
+}
+function airSound(fn) {
+  const ms = airSoundDelay();
+  if (ms < 1) fn();
+  else setTimeout(fn, ms);
+  return ms;
+}
 const airPiano = new AirPiano({
   ...cfg.airPiano,
   onPress: (p) => {
-    synth.noteOn(p.note, p.velocity);
-    // 確かめる用：音と動きのずれを測るとき（テストのスクリプトが window.__airTiming を用意したときだけ）、打鍵の時刻を残す
-    window.__airTiming?.push({ press: performance.now(), cross: p.t * 1000, frame: p.tFrame * 1000, base: synth.ctx?.baseLatency, out: synth.ctx?.outputLatency });
+    // 確かめる用：音と動きのずれを測るとき（テストのスクリプトが window.__airTiming を用意したときだけ）、打鍵と音の時刻を残す
+    const rec = { press: performance.now(), cross: p.t * 1000, frame: p.tFrame * 1000, base: synth.ctx?.baseLatency, out: synth.ctx?.outputLatency };
+    window.__airTiming?.push(rec);
+    rec.delay = airSound(() => {
+      synth.noteOn(p.note, p.velocity);
+      rec.sound = performance.now();
+    });
     addStrike({ t: p.t, velocity: null, airVelocity: p.velocity, source: 'air', label: cfg.airPiano.labels?.[p.key], note: p.note });
   },
-  onRelease: (p) => synth.noteOff(p.note),
+  onRelease: (p) => airSound(() => synth.noteOff(p.note)),
 });
 const airActive = () => flag('air') || cfg.airPiano.enabled === true || (cfg.airPiano.enabled === 'auto' && !midi.connected);
 const keysCanvas = $('#keys');

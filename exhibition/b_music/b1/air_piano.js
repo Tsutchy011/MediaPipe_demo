@@ -30,6 +30,7 @@ export class AirPiano {
    * @param {number} o.frontRatio  白鍵の前の面の高さ（白鍵の幅に対する倍率の上限）
    * @param {number} o.leadMs      線を越える時刻を、これだけ先まで予測して鳴らす [ms]（0 で使わない）
    * @param {number} o.leadMinSpeed 予測して鳴らすのは、これより速いときだけ [画素/秒]
+   * @param {number} o.blackAlpha  黒鍵の濃さ（0〜1。小さいほど透けて、うしろの手が見える）
    * @param {(p:{note:number, velocity:number, speed:number, t:number, key:number})=>void} o.onPress
    * @param {(p:{note:number, key:number})=>void} o.onRelease
    */
@@ -48,6 +49,7 @@ export class AirPiano {
       frontRatio: 1.25,
       leadMs: 0,
       leadMinSpeed: 800,
+      blackAlpha: 0.45,
       ...o,
     };
     this.tips = new Map(); // 指先ごとの前のフレームの位置と状態
@@ -184,9 +186,9 @@ export class AirPiano {
     for (let i = 0; i + 1 < n; i++) {
       if (notes[i + 1] - notes[i] !== 2) continue;
       const cx = x0 + (i + 1) * kw;
-      ctx.fillStyle = 'rgba(70, 74, 82, 0.9)'; // 上の面（少し明るく）
+      ctx.fillStyle = `rgba(70, 74, 82, ${this.o.blackAlpha * 0.9})`; // 上の面（少し明るく。透けてうしろの手が見えるように）
       ctx.fillRect(cx - bw / 2, bTop - H * 0.07, bw, H * 0.07);
-      ctx.fillStyle = 'rgba(16, 18, 22, 0.92)'; // 前の面
+      ctx.fillStyle = `rgba(16, 18, 22, ${this.o.blackAlpha})`; // 前の面
       ctx.fillRect(cx - bw / 2, bTop, bw, bBottom - bTop);
     }
     // 白鍵の前の面（上の角が丸い四角）。弾いた鍵は沈んで光る
