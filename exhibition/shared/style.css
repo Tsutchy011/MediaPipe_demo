@@ -38,6 +38,10 @@ body {
   font-family: var(--font);
   font-size: 18px;
   line-height: 1.6;
+  /* 日本語の文を、単語の途中で改行しない（文節の切れ目で改行する。lang="ja" のページで、Chrome 119 以降。
+     iPhone の Safari などでは効かず、今までどおりの改行になる）。1行に入りきらない長い語だけは、はみ出さないように折る */
+  word-break: auto-phrase;
+  overflow-wrap: break-word;
 }
 
 h1,
