@@ -702,3 +702,16 @@ kbd {
     min-width: min(260px, 55vw);
   }
 }
+
+/* 作者の表記（shared/credit.js）。入口のページと、各デモの結果の画面の下 */
+.credit {
+  margin: 14px 0 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+.credit a {
+  color: inherit;
+  text-decoration: underline;
+}
