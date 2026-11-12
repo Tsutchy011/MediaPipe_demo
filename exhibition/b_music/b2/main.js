@@ -40,6 +40,7 @@ const DEFAULTS = {
   model: { url: 'model.json', recordSec: 10.6, rate: 30, smoothSec: 0.2, camDistM: 0.9, leadSec: 1.0, downSec: 1.4, upSec: 1.0, restSec: 0.8, strokes: 3 },
   metrics: { maxLagSec: 0.8, timingTolSec: 0.25, scoreFloorR: 0.4, smoothSec: 0.2, minMoveDeg: 1.5, lagMinR: 0.6, dtwBandSec: 0.5, scoreScaleDeg: 'auto', gapFillSec: 0.3, minValidRatio: 0.6, goodScore: 80, showAngleDiff: false },
   live: { yRange: [30, 185], freeWindowSec: 10 },
+  modelTools: true, // お手本の記録・ファイルから読み込む・最初のお手本に戻す（スタッフ用）。Web 版では出さない（config.web.json）
 };
 const MODEL_KEY = 'b2-model';
 
@@ -53,6 +54,8 @@ try {
   throw e;
 }
 texts.apply();
+// Web 版：お手本の記録・ファイルから読み込む・最初のお手本に戻す の行を出さない（2026-11-12 HUMAN）
+if (cfg.modelTools === false) $('#recordBtn').closest('.row').hidden = true;
 
 const css = getComputedStyle(document.documentElement);
 const color = (n, fb) => css.getPropertyValue(n).trim() || fb;
@@ -127,7 +130,7 @@ function safeSetModel(m) {
 
 async function loadModel() {
   model = null;
-  const local = safeGetModel();
+  const local = cfg.modelTools === false ? null : safeGetModel(); // Web 版では、このブラウザに残っているお手本も使わない
   if (validModel(local) && !sameMode(local)) console.info('B-2：このブラウザのお手本は、前の版か違う測り方で記録したものなので使いません');
   if (validModel(local) && sameMode(local)) {
     model = local;
@@ -807,7 +810,7 @@ window.addEventListener('keydown', (e) => {
     } else if (k === 'ArrowLeft') slides.prev();
     else if (k === 'Escape') slides.first();
     else if (k === 'm') enterFree();
-    else if (k === 'o') startRecord();
+    else if (k === 'o' && cfg.modelTools !== false) startRecord();
     return;
   }
   if (k === 'Escape') return goHome();

@@ -5,6 +5,8 @@
 //   ?assets=cdn / ?assets=vendor で、どちらかに決めて試せる。どちらを使ったかは assetSource() で分かる。
 //   どちらでも、映像は端末の中で処理し、送信も保存もしない（CDN からはプログラムとモデルを受け取るだけ）。
 // - GPU で作れなければ CPU に切り替える（既存デモと同じやり方）。
+//   iPhone・iPad（どのブラウザも中身は Safari と同じ WebKit）と Mac の Safari では、はじめから CPU にする
+//   （GPU で作れても、結果が空のままになることがあるため。chooseDelegate）。?delegate=gpu / ?delegate=cpu で決めて試せる。
 // - detectForVideo に渡す時刻は performance.now() 基準（ミリ秒）。
 //   requestVideoFrameCallback が使えるときは、カメラが撮った時刻（captureTime。performance.now() と同じ基準）を使い、
 //   使えないときは処理した時刻を使う。どちらを使ったかは frame.timeSource に入る。
@@ -71,6 +73,25 @@ async function getFileset() {
 
 /** 読み込み先ごとのモデルの場所（確認用） */
 export const modelUrl = (kind) => SOURCES[source || 'vendor'].models[kind];
+
+/** iPhone・iPad（どのブラウザも WebKit）か、Mac の Safari か */
+export function isAppleWebKit() {
+  const ua = navigator.userAgent;
+  const ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const safari = /AppleWebKit/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|CriOS|Edg|OPR|Firefox|FxiOS/.test(ua);
+  return ios || safari;
+}
+
+/**
+ * GPU と CPU のどちらで推定するか。iPhone・Safari では CPU（GPU だと結果が空のままになることがある）。
+ * URL の ?delegate=gpu / ?delegate=cpu が最優先。
+ */
+export function chooseDelegate(requested = 'GPU') {
+  const q = (new URLSearchParams(location.search).get('delegate') || '').toUpperCase();
+  if (q === 'GPU' || q === 'CPU') return q;
+  if (requested === 'CPU') return 'CPU';
+  return isAppleWebKit() ? 'CPU' : 'GPU';
+}
 
 /**
  * ランドマーク検出器を作る。
@@ -194,8 +215,12 @@ export class VideoLoop {
     if (!this.running) return;
     try {
       const v = this.video;
-      const mediaTime = meta ? meta.mediaTime : v.currentTime;
-      if (v.readyState >= 2 && mediaTime !== this.lastMediaTime) {
+      // requestVideoFrameCallback は新しいフレームが出るたびに呼ばれるので、毎回新しいフレームとみなす
+      // （Safari のカメラの映像では mediaTime が進まないことがあり、それで見分けると2回目から処理されない）。
+      // requestAnimationFrame のときだけ、currentTime が変わったかで見分ける。
+      const mediaTime = meta ? meta.presentedFrames ?? meta.mediaTime : v.currentTime;
+      const fresh = meta ? true : mediaTime !== this.lastMediaTime;
+      if (v.readyState >= 2 && fresh) {
         // 撮った時刻が分かればそれを使う（MIDI の時刻とそろえるため）。単調に増えるようにする
         let t;
         let timeSource;

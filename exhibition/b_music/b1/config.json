@@ -37,7 +37,8 @@
     "order": [
       "weak",
       "strong"
-    ]
+    ],
+    "pad": false
   },
   "live": {
     "windowSec": 6,

@@ -261,4 +261,10 @@
   .meter > span:first-child {
     grid-column: 1 / -1;
   }
+
+  /* 体験中の上の帯：MIDI 鍵盤がつながっていないときの状態は出さない（スマホではつながらないので、映像と指示の場所を広くする。
+     最初の画面の下には出る） */
+  .topbar #midiStatus2:not(.status-ok) {
+    display: none;
+  }
 }

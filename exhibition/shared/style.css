@@ -350,6 +350,45 @@ p {
   transform: scaleX(-1);
 }
 
+/* 縦長の画面（スマホ・タブレットを縦に持ったとき）：映像の枠を、カメラの映像と同じ縦横の比にする
+   （縦長の映像なら枠も縦長。比は shared/camera_ui.js が --video-ar に入れる）。
+   指示の文も見えるように、枠の高さは画面の 55% まで（そのぶん幅をせまくして、真ん中に置く） */
+@media (orientation: portrait) and (max-width: 900px) {
+  .video-wrap {
+    aspect-ratio: var(--video-ar, 16 / 9);
+    width: min(100%, calc(55vh * var(--video-ar, 16 / 9)));
+    width: min(100%, calc(55svh * var(--video-ar, 16 / 9)));
+    margin-inline: auto;
+  }
+}
+
+/* スマホ（幅の狭い画面）：上の帯を小さくし、指示の欄の余白を減らす（映像と指示が1画面に入るように） */
+@media (max-width: 600px) {
+  .topbar {
+    padding: 8px 12px;
+    gap: 6px 10px;
+  }
+
+  .topbar h1 {
+    font-size: 1.15rem;
+    flex-basis: 100%;
+  }
+
+  .layout {
+    gap: 12px;
+  }
+
+  .layout .left,
+  .layout .right {
+    gap: 10px;
+  }
+
+  .layout .task {
+    min-height: 0;
+    padding: 10px 12px;
+  }
+}
+
 .video-msg {
   position: absolute;
   inset: 0;

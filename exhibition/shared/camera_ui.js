@@ -4,13 +4,18 @@
 // - カメラがない・許可されないときは、理由を画面に出し、「ダミーで試す」に切り替えられる。
 //   ?dummy=1 で開くと、はじめからダミー入力で動く（カメラなしで画面と流れを確かめる用）。
 // - 映像も結果も、このページの中だけで使う（保存も送信もしない）。
+// - GPU か CPU か：iPhone・Safari では CPU（mediapipe.js の chooseDelegate）。スマホで GPU を使っていて、
+//   3 秒（90 コマ）たっても何も見つからないときは、CPU に切り替える（GPU だと結果が空のままになる機器があるため）。
+// - describe()：オプション（スタッフ用）の欄に出す状態。映像の大きさ・GPU/CPU・読み込み先・fps・見つかったコマの数・推定の時間。
+//   スマホで「見つからない」ときに、どこで止まっているかをこれで確かめる。
+// - 映像の縦横の比を、映像の枠（.video-wrap）の --video-ar に入れる（縦長のスマホでは枠も縦長になる。shared/style.css）。
 //
 // 使い方：
 //   const cam = new CameraInput({ video, overlay, msg, kind: 'face', options: {...}, onResult, dummy: (tMs) => 結果 });
 //   await cam.start();
 
-import { createLandmarker, startCamera, stopCamera, cameraErrorMessage, listCameras, VideoLoop, DummySource, assetSource } from './mediapipe.js';
-import { flag, h } from './util.js';
+import { createLandmarker, chooseDelegate, startCamera, stopCamera, cameraErrorMessage, listCameras, VideoLoop, DummySource, assetSource } from './mediapipe.js';
+import { flag, h, isTouchDevice } from './util.js';
 
 const CAMERA_KEY = 'demo-camera-id';
 
@@ -33,7 +38,12 @@ export class CameraInput {
    */
   constructor(o) {
     this.o = { fps: 30, delegate: 'GPU', mirror: 'auto', camera: {}, ...o };
+    this.o.delegate = chooseDelegate(this.o.delegate);
     this.mode = 'off'; // off | loading | camera | dummy | error
+    this.stats = newStats();
+    this.fellBack = false; // GPU で見つからず、CPU に切り替えたか
+    this._triedCpu = this.o.delegate === 'CPU';
+    this._switching = false;
     this.landmarker = null;
     this.delegate = null;
     this.loop = null;
@@ -80,7 +90,11 @@ export class CameraInput {
 
   /** 状態の説明（スタッフ向け） */
   describe() {
-    if (this.mode === 'camera') return `カメラ ${this.videoSize.w}×${this.videoSize.h}・${this.delegate}・${assetSource() === 'vendor' ? 'vendor' : 'CDN'}・${this.fps.toFixed(0)} fps`;
+    if (this.mode === 'camera') {
+      const st = this.stats;
+      const dg = this.fellBack ? `${this.delegate}（GPU で見つからず切り替え）` : this.delegate;
+      return `カメラ ${this.videoSize.w}×${this.videoSize.h}・${dg}・${assetSource() === 'vendor' ? 'vendor' : 'CDN'}・${this.fps.toFixed(0)} fps・見つかった ${st.detected}/${st.frames} コマ・推定 ${Math.round(st.ms)} ms`;
+    }
     if (this.mode === 'dummy') return `ダミー入力・${this.fps.toFixed(0)} fps`;
     if (this.mode === 'loading') return '準備中…';
     if (this.mode === 'error') return 'カメラを使えません';
@@ -114,6 +128,7 @@ export class CameraInput {
         blank.height = 64;
         this.landmarker.detectForVideo(blank, 1);
       }
+      this.stats = newStats();
       this.loop = new VideoLoop(this.o.video, (f) => this._onFrame(f), { fps: this.o.fps });
       this.loop.start();
       this.mode = 'camera';
@@ -171,6 +186,8 @@ export class CameraInput {
   _fitOverlay() {
     this.o.overlay.width = this.videoSize.w;
     this.o.overlay.height = this.videoSize.h;
+    // 映像の縦横の比を枠に伝える（縦長のスマホでは、枠も映像と同じ縦長にする。shared/style.css）
+    this.o.video.parentElement?.style.setProperty('--video-ar', `${this.videoSize.w} / ${this.videoSize.h}`);
   }
 
   _onFrame({ video, t, timeSource }) {
@@ -178,9 +195,51 @@ export class CameraInput {
       this.videoSize = { w: video.videoWidth, h: video.videoHeight };
       this._fitOverlay();
     }
+    if (this._switching) return;
+    const t0 = performance.now();
     const result = this.landmarker.detectForVideo(video, t);
+    const st = this.stats;
+    const ms = performance.now() - t0;
+    st.frames++;
+    st.ms = st.frames === 1 ? ms : st.ms * 0.9 + ms * 0.1;
+    if (hasDetection(result)) st.detected++;
+    // スマホの GPU で、しばらく何も見つからないときは CPU に切り替える（GPU だと結果が空のままになる機器がある）
+    if (this.delegate === 'GPU' && !this._triedCpu && isTouchDevice() && st.frames >= 90 && st.detected === 0) this._fallbackToCpu();
     this.o.onResult(result, t, { dummy: false, timeSource, size: this.videoSize });
   }
+
+  async _fallbackToCpu() {
+    this._triedCpu = true;
+    this._switching = true;
+    try {
+      const { landmarker } = await createLandmarker(this.o.kind, this.o.options, { delegate: 'CPU' });
+      const old = this.landmarker;
+      this.landmarker = landmarker;
+      this.delegate = 'CPU';
+      this.fellBack = true;
+      this.stats = newStats();
+      try {
+        old?.close?.();
+      } catch {
+        /* 閉じられなくても動く */
+      }
+      console.info('GPU では何も見つからなかったので、CPU に切り替えました');
+    } catch (e) {
+      console.warn('CPU に切り替えられませんでした', e);
+    } finally {
+      this._switching = false;
+    }
+  }
+}
+
+function newStats() {
+  return { frames: 0, detected: 0, ms: 0 };
+}
+
+/** 顔・手・体のどれかが見つかったか（MediaPipe の結果） */
+function hasDetection(r) {
+  const list = r?.faceLandmarks || r?.landmarks;
+  return Array.isArray(list) && list.length > 0;
 }
 
 function safeGet(k) {

@@ -28,7 +28,7 @@ const DEFAULTS = {
   camera: { width: 1280, height: 720, facingMode: 'user', mirror: 'auto', fps: 30, delegate: 'GPU' },
   speed: { landmark: 8, smoothing: 0 },
   strike: { preSec: 0.25, postSec: 0.04, videoLatencyMs: 60, videoLag: 'auto', videoLagInitMs: 80, debounceSec: 0.15, keys: [' '] },
-  task: { count: 3, order: ['weak', 'strong'] },
+  task: { count: 3, order: ['weak', 'strong'], pad: true },
   live: { windowSec: 6, yMin: 1500 },
   sound: { enabled: true, volume: 0.8 },
   airPiano: { enabled: 'auto', line: 0.6 },
@@ -94,7 +94,7 @@ function refreshMidi() {
   setStatus($('#midiStatus2'), kind, text);
   const useKeys = !midi.connected && (!!ui.ac || ui.mode === 'free');
   $('#keyHint').hidden = !useKeys;
-  $('#pad').hidden = !useKeys;
+  $('#pad').hidden = !useKeys || cfg.task.pad === false; // Web 版では出さない（タップすると手がカメラから外れる。config.web.json）
 }
 midi.start();
 
