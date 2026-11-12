@@ -18,6 +18,15 @@
 // （手前の辺から奥へ、上の面の奥行きのその割合のところ）に描く。そのぶん鍵盤の絵が下へずれ、指が上の面に入ったあたりで鳴る。
 // どちらでも、打鍵の線の上で、描いた鍵の境目が当たり判定の境目とそろう（白鍵の手前の辺は、lineDepth 0 で left〜right）。
 //
+// 線より奥を薄く（2026-11-13 HUMAN：「鍵盤のところに指があるのに奥側で押してるはずなのに音が出ないのが不自然…
+// 打鍵の閾値に関係ない所は透明度を上げて、見た目と音が出る個所を一致させるとか？？」）：
+//   backAlpha：打鍵の線より上に見える部分（白鍵の上の面と黒鍵。どちらも鳴らない）の濃さ（1 で薄くしない）。
+//   しっかり見えるのは、点線から手前（白鍵の前の面と点線）だけになり、指先が上の面に重なっても、鍵に触れているようには見えにくい。
+//   弾いた鍵の光り方も、薄くした部分では同じだけ薄い（前の面ははっきり光る）。
+//   backFade 'gradient'：点線のところは今の濃さで、奥へ行くほど薄く、いちばん奥で backAlpha（'flat' は一様に backAlpha）。
+// hoverSink（別案。比べる用）：指先が白鍵の上の面に重なって見えるとき、その鍵を、指先が点線に近づくほど沈め、
+//   点線で底に着いて鳴る（本物の鍵盤も、押し始めてから底に近いところで音が出る）。奥で止めた指の下では、鍵が途中まで沈んで見える。
+//
 // leadMs：指先の速さから、線を越える時刻を leadMs だけ先まで予測して、越える前に鳴らす（0 で使わない。
 // 音が出るまでの遅れを埋める。下向きに leadMinSpeed より速く動いているときだけ）。
 
@@ -42,6 +51,10 @@ export class AirPiano {
    * @param {number} o.lineDepth   打鍵の線を描く位置（白鍵の上の面の手前の辺から奥へ、上の面の奥行きに対する割合。0 で手前の辺）
    * @param {number} o.keyDepth    白鍵の上の面の奥行き（見えている部分。白鍵の幅に対する倍率）
    * @param {number} o.viewDistance 目から鍵盤までの距離（鍵盤の幅に対する倍率。小さいほど、奥が狭く見える）
+   * @param {number} o.backAlpha   打鍵の線より上に見える部分（白鍵の上の面と黒鍵）の濃さ（0〜1。1 で薄くしない）
+   * @param {string} o.backFade    'flat'：一様に backAlpha。'gradient'：点線のところは今の濃さで、奥ほど薄く（いちばん奥で backAlpha）
+   * @param {boolean} o.hoverSink  指先が白鍵の上の面に重なって見えるとき、点線に近づくほどその鍵を沈める
+   * @param {number} o.sinkDepth   弾いた鍵の手前の端が沈む量（白鍵の前の面の高さに対する割合）
    * @param {(p:{note:number, velocity:number, speed:number, t:number, key:number})=>void} o.onPress
    * @param {(p:{note:number, key:number})=>void} o.onRelease
    */
@@ -65,6 +78,10 @@ export class AirPiano {
       lineDepth: 0,
       keyDepth: 3,
       viewDistance: 2.5,
+      backAlpha: 0.3,
+      backFade: 'flat',
+      hoverSink: false,
+      sinkDepth: 0.08,
       ...o,
     };
     this.tips = new Map(); // 指先ごとの前のフレームの位置と状態
@@ -163,29 +180,17 @@ export class AirPiano {
     st.key = -1;
   }
 
-  /**
-   * 鍵盤を描く（左右反転していないキャンバスに、見えている画面の座標で）。毎フレーム描くので、塗りと線だけにする。
-   * 少し上から見下ろした形（viewPitchDeg）：奥から、白鍵の上の面（奥ほど少し狭い帯）、その奥の側に乗る黒鍵、
-   * 手前の下に白鍵の前の面、その下に黒い枠。最後に打鍵の線（点線）と指先。
-   */
-  draw(ctx, w, h) {
+  /** 鍵盤の形の値と、立体の点を画面の点にする関数（draw・topPoint・_hover で使う） */
+  _geom(w, h) {
     const o = this.o;
-    const { notes, labels, line, bottom, left, right } = o;
-    ctx.clearRect(0, 0, w, h);
-    if (!(w > 1 && h > 1)) return; // 映像の大きさがまだ分からない
-    const n = notes.length;
-    const kw = ((right - left) * w) / n; // 白鍵の幅（打鍵の線の上で）
-    const x0 = left * w;
+    const n = o.notes.length;
+    const kw = ((o.right - o.left) * w) / n; // 白鍵の幅（打鍵の線の上で）
+    const x0 = o.left * w;
     const half = (n * kw) / 2;
     const xc = x0 + half;
-    const top = line * h; // 打鍵の線
-    const H = Math.max(8, Math.min((bottom - line) * h, kw * o.frontRatio)); // 白鍵の前の面の高さ
-    const gap = Math.max(2, kw * 0.04); // 鍵の間のすき間
-    const sink = H * 0.08; // 弾いたときに、白鍵の手前の端が沈む量
+    const top = o.line * h; // 打鍵の線
+    const H = Math.max(8, Math.min((o.bottom - o.line) * h, kw * o.frontRatio)); // 白鍵の前の面の高さ
     const L = kw * o.keyDepth; // 白鍵の上の面の奥行き（見えている部分）
-    const zb = L * 0.4; // 黒鍵の手前の端（白鍵の手前の辺から）
-    const bw = kw * 0.5; // 黒鍵の幅
-    const hb = kw * 0.42; // 黒鍵の高さ（白鍵の上の面から）
     const zL = Math.max(0, Math.min(0.9, Number(o.lineDepth) || 0)) * L; // 打鍵の線の位置（手前の辺からの奥行き）
     const th = (Math.max(0, Math.min(60, Number(o.viewPitchDeg) || 0)) * Math.PI) / 180;
     const cs = Math.cos(th);
@@ -198,6 +203,71 @@ export class AirPiano {
       const k = D / (D + z * cs - Y * sn);
       return [xc + X * k, top - (Y * cs + z * sn) * k];
     };
+    return {
+      n, kw, x0, half, xc, top, H, L, zL, cs, sn, D, P,
+      gap: Math.max(2, kw * 0.04), // 鍵の間のすき間
+      zb: L * 0.4, // 黒鍵の手前の端（白鍵の手前の辺から）
+      bw: kw * 0.5, // 黒鍵の幅
+      hb: kw * 0.42, // 黒鍵の高さ（白鍵の上の面から）
+    };
+  }
+
+  /** 白鍵 i と i+1 の間に黒鍵があるか（白鍵どうしが全音はなれているところ） */
+  _black(i) {
+    const notes = this.o.notes;
+    return i >= 0 && i + 1 < notes.length && notes[i + 1] - notes[i] === 2;
+  }
+
+  /**
+   * 白鍵 key の上の面で、手前の辺から奥へ depth（上の面の奥行きに対する割合）の点が、画面のどこに見えるか
+   * （画面の幅・高さに対する割合）。確かめる用のページで、指先を置く場所に使う
+   */
+  topPoint(w, h, key, depth) {
+    const g = this._geom(w, h);
+    const [x, y] = g.P(-g.half + (key + 0.5) * g.kw, 0, depth * g.L);
+    return { x: x / w, y: y / h };
+  }
+
+  /**
+   * hoverSink：指先が白鍵の上の面に重なって見えるとき、その鍵の沈み具合（0〜1。上の面の奥の端で 0、打鍵の線で 1）。
+   * 指先の画面の位置から、白鍵の上の面のどこに重なっているかを逆にたどる。黒鍵の上なら沈めない
+   */
+  _hover(g, w, h) {
+    const out = new Map();
+    const { n, kw, half, xc, top, L, zL, cs, sn, D, zb, bw, gap } = g;
+    if (!this.o.hoverSink || sn < 0.01) return out;
+    for (const p of this.lastTips) {
+      const u = top - p.y * h; // 打鍵の線より何画素上か
+      if (u <= 0) continue;
+      const den = sn * D - u * cs;
+      if (den <= 0) continue;
+      const z = (u * D) / den; // 上の面の上で、打鍵の線から奥への長さ
+      const Z = z + zL;
+      if (Z > L) continue; // 上の面より奥（鍵盤の外）
+      const X = ((p.x * w - xc) * (D + z * cs)) / D;
+      const i = Math.floor((X + half) / kw);
+      if (i < 0 || i >= n) continue;
+      const xi = X + half - i * kw; // その白鍵の左の端から
+      if (Z >= zb - gap && ((this._black(i - 1) && xi < bw / 2 + gap / 2) || (this._black(i) && xi > kw - bw / 2 - gap / 2))) continue;
+      const k = Math.max(0, Math.min(1, (L - Z) / Math.max(1e-6, L - zL)));
+      out.set(i, Math.max(out.get(i) || 0, k));
+    }
+    return out;
+  }
+
+  /**
+   * 鍵盤を描く（左右反転していないキャンバスに、見えている画面の座標で）。毎フレーム描くので、塗りと線だけにする。
+   * 少し上から見下ろした形（viewPitchDeg）：奥から、白鍵の上の面（奥ほど少し狭い帯）、その奥の側に乗る黒鍵、
+   * 手前の下に白鍵の前の面、その下に黒い枠。最後に打鍵の線（点線）と指先。
+   * 打鍵の線より上に見える部分（白鍵の上の面と黒鍵）は、下書きのキャンバスに描いてから backAlpha の濃さで重ねる。
+   */
+  draw(ctx, w, h) {
+    const o = this.o;
+    const { labels } = o;
+    ctx.clearRect(0, 0, w, h);
+    if (!(w > 1 && h > 1)) return; // 映像の大きさがまだ分からない
+    const g = this._geom(w, h);
+    const { n, kw, x0, half, top, H, L, P, gap, zb, bw, hb } = g;
     const path = (c, pts) => {
       c.beginPath();
       pts.forEach(([X, Y, Z], j) => {
@@ -207,17 +277,20 @@ export class AirPiano {
       });
       c.closePath();
     };
+    const sink = H * Math.max(0, Number(o.sinkDepth) || 0); // 弾いたときに、白鍵の手前の端が沈む量
+    const hover = this._hover(g, w, h);
     const now = performance.now();
     const state = (i) => {
       const fl = Math.max(0, 1 - (now - (this.flash.get(i) ?? -1e9)) / 400);
       const pressed = this.down.has(i);
-      return { pressed, glow: pressed ? 1 : fl, dy: pressed ? sink : sink * fl };
+      const hv = hover.get(i) || 0; // 指先の下で、途中まで沈んでいる割合（hoverSink）
+      const dy = Math.max(pressed ? sink : sink * fl, sink * hv);
+      return { pressed, glow: pressed ? 1 : fl, dy, hv };
     };
     // 弾いた鍵は、奥の支点（見えている部分よりさらに奥）を中心に、手前が dy だけ沈む
     const drop = (dy, Z) => -dy * (1 - Z / (2.5 * L));
     // 白の色を、光った分だけオレンジ（213, 94, 0）に近づける
     const tint = (rgb, a, glow) => `rgba(${rgb.map((c, j) => Math.round(c + ([213, 94, 0][j] - c) * glow)).join(', ')}, ${a + 0.1 * glow})`;
-    const black = (i) => i >= 0 && i + 1 < n && notes[i + 1] - notes[i] === 2; // 白鍵 i と i+1 の間に黒鍵があるか
     const edge = 'rgba(148, 163, 184, 0.85)';
     const lw = Math.max(1, gap * 0.4);
 
@@ -227,39 +300,45 @@ export class AirPiano {
     path(ctx, [[-half - gap, -H, 0], [half + gap, -H, 0], [half + gap, -H - fh, 0], [-half - gap, -H - fh, 0]]);
     ctx.fill();
 
+    // ---- 打鍵の線より奥：白鍵の上の面と黒鍵（下書きのキャンバス bc に描く） ----
+    const back = this._layer('back', w, h);
+    const bc = back.getContext('2d');
+    bc.clearRect(0, 0, w, h);
+
     // 白鍵の上の面（奥の、黒鍵が乗るところは切り欠く）
     const nz = zb - gap; // 切り欠きの手前の端
     for (let i = 0; i < n; i++) {
-      const { glow, dy } = state(i);
+      const { glow, dy, hv } = state(i);
       const xa = -half + i * kw + gap / 2;
       const xb = -half + (i + 1) * kw - gap / 2;
       const pts = [[xa, 0], [xb, 0]];
-      if (black(i)) {
+      if (this._black(i)) {
         const r = -half + (i + 1) * kw - bw / 2 - gap / 2;
         pts.push([xb, nz], [r, nz], [r, L]);
       } else pts.push([xb, L]);
-      if (black(i - 1)) {
+      if (this._black(i - 1)) {
         const l = -half + i * kw + bw / 2 + gap / 2;
         pts.push([l, L], [l, nz], [xa, nz]);
       } else pts.push([xa, L]);
-      path(ctx, pts.map(([X, Z]) => [X, drop(dy, Z), Z]));
-      ctx.fillStyle = tint([246, 247, 250], 0.55, glow);
-      ctx.fill();
-      ctx.strokeStyle = edge;
-      ctx.lineWidth = lw;
-      ctx.stroke();
+      path(bc, pts.map(([X, Z]) => [X, drop(dy, Z), Z]));
+      // 途中まで沈んだ鍵は、傾いた分だけ少し暗く（hoverSink のときだけ）
+      bc.fillStyle = tint([246, 247, 250].map((c) => c * (1 - 0.2 * hv)), 0.55, glow);
+      bc.fill();
+      bc.strokeStyle = edge;
+      bc.lineWidth = lw;
+      bc.stroke();
     }
 
     // 黒鍵（鳴らない飾り）：上が少し細い箱。別のキャンバスに不透明で描いてから、blackAlpha の濃さで重ねる
     // （面ごとに半透明で塗ると、面の境目が明るい線に見えるため）
     const blacks = [];
-    for (let i = 0; i + 1 < n; i++) if (black(i)) blacks.push(-half + (i + 1) * kw);
+    for (let i = 0; i + 1 < n; i++) if (this._black(i)) blacks.push(-half + (i + 1) * kw);
+    const ins = bw * 0.14; // 上の面の、左右の細り
+    const zt = zb + hb * 0.3; // 上の面の手前の端（前の面は少し奥へ傾く）
     if (blacks.length) {
-      const layer = this._layer(w, h);
+      const layer = this._layer('black', w, h);
       const b = layer.getContext('2d');
       b.clearRect(0, 0, w, h);
-      const ins = bw * 0.14; // 上の面の、左右の細り
-      const zt = zb + hb * 0.3; // 上の面の手前の端（前の面は少し奥へ傾く）
       let x1 = Infinity;
       let y1 = Infinity;
       let x2 = -Infinity;
@@ -295,11 +374,35 @@ export class AirPiano {
       const ex = Math.min(w, Math.ceil(x2) + 2);
       const ey = Math.min(h, Math.ceil(y2) + 2);
       if (ex > sx && ey > sy) {
-        ctx.save();
-        ctx.globalAlpha = Math.max(0, Math.min(1, o.blackAlpha));
-        ctx.drawImage(layer, sx, sy, ex - sx, ey - sy, sx, sy, ex - sx, ey - sy);
-        ctx.restore();
+        bc.save();
+        bc.globalAlpha = Math.max(0, Math.min(1, o.blackAlpha));
+        bc.drawImage(layer, sx, sy, ex - sx, ey - sy, sx, sy, ex - sx, ey - sy);
+        bc.restore();
       }
+    }
+
+    // 線より上を薄くする（destination-in：描いたものの濃さに、この塗りの濃さを掛ける）。線より下（沈んだ鍵の手前など）はそのまま
+    const ba = Math.max(0, Math.min(1, Number(o.backAlpha ?? 1)));
+    const yFar = P(0, 0, L)[1]; // 白鍵の上の面の奥の端
+    if (ba < 1) {
+      const t = Math.max(0, Math.min(1, top / h));
+      const mask = bc.createLinearGradient(0, 0, 0, h);
+      const far = `rgba(0, 0, 0, ${ba})`;
+      mask.addColorStop(0, far);
+      if (o.backFade === 'gradient') mask.addColorStop(Math.max(0, Math.min(t, yFar / h)), far); // 奥の端から線まで、だんだん濃く
+      else mask.addColorStop(t, far);
+      mask.addColorStop(t, 'rgba(0, 0, 0, 1)');
+      mask.addColorStop(1, 'rgba(0, 0, 0, 1)');
+      bc.globalCompositeOperation = 'destination-in';
+      bc.fillStyle = mask;
+      bc.fillRect(0, 0, w, h);
+      bc.globalCompositeOperation = 'source-over';
+    }
+    // 下書きを重ねる（上の面と黒鍵のある高さだけ）
+    {
+      const sy = Math.max(0, Math.floor(Math.min(yFar, P(0, hb, L)[1], P(0, hb, zt)[1])) - 2);
+      const ey = Math.min(h, Math.ceil(P(0, -sink, 0)[1]) + 2);
+      if (ey > sy) ctx.drawImage(back, 0, sy, w, ey - sy, 0, sy, w, ey - sy);
     }
 
     // 白鍵の前の面（手前の下）。弾いた鍵は沈んで光る
@@ -337,17 +440,18 @@ export class AirPiano {
     // 指先
     const tipR = Math.max(10, kw * 0.14);
     for (const p of this.lastTips) {
-      ctx.fillStyle = p.y < line ? '#ffd166' : '#d55e00';
+      ctx.fillStyle = p.y < o.line ? '#ffd166' : '#d55e00';
       ctx.beginPath();
       ctx.arc(p.x * w, p.y * h, tipR, 0, Math.PI * 2);
       ctx.fill();
     }
   }
 
-  /** 黒鍵を描く下書きのキャンバス（鍵盤のキャンバスと同じ大きさ） */
-  _layer(w, h) {
-    if (!this._black) this._black = document.createElement('canvas');
-    const c = this._black;
+  /** 下書きのキャンバス（鍵盤のキャンバスと同じ大きさ）。name ごとに1枚 */
+  _layer(name, w, h) {
+    if (!this._layers) this._layers = {};
+    let c = this._layers[name];
+    if (!c) c = this._layers[name] = document.createElement('canvas');
     if (c.width !== w || c.height !== h) {
       c.width = w;
       c.height = h;
