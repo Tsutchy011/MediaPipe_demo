@@ -39,9 +39,19 @@ body {
   font-size: 18px;
   line-height: 1.6;
   /* 日本語の文を、単語の途中で改行しない（文節の切れ目で改行する。lang="ja" のページで、Chrome 119 以降。
-     iPhone の Safari などでは効かず、今までどおりの改行になる）。1行に入りきらない長い語だけは、はみ出さないように折る */
+     iPhone の Safari などは対応していないので、shared/phrase.js が下の html.phrase-js .ph で同じようにする）。
+     1行に入りきらない長い語だけは、はみ出さないように折る */
   word-break: auto-phrase;
   overflow-wrap: break-word;
+}
+
+/* Chrome 以外（iPhone の Safari・Firefox など）：shared/phrase.js が文を文節ごとの <span class="ph"> に分けるので、
+   文節の中では改行せず、文節と文節の間でだけ改行する。1行に入りきらない長い文節だけは、その中で折り返す */
+html.phrase-js .ph {
+  display: inline-block;
+  max-width: 100%;
+  /* 箱をまたぐ字詰めはできないので、箱の中でも字詰め（カーニング）をしない（箱の後ろにすき間ができないように） */
+  font-kerning: none;
 }
 
 h1,

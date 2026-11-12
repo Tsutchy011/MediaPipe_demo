@@ -13,6 +13,7 @@
 // 確認用に、URL に ?touch=1 を付けると touch の文、?touch=0 で pc の文になる。
 
 import { isNum, isTouchDevice } from './util.js';
+import { startPhraseBreaks } from './phrase.js';
 
 /** JSON を読む。失敗したら、スタッフが直せるように理由の分かる日本語のエラーにする */
 export async function loadJSON(url) {
@@ -105,9 +106,14 @@ export class Texts {
   }
 }
 
-/** texts.json を読む（{ "pc": …, "touch": … } の文は、いまの端末の文にしておく） */
+/**
+ * texts.json を読む（{ "pc": …, "touch": … } の文は、いまの端末の文にしておく）。
+ * あわせて、日本語の文を単語の途中で改行しないしくみを始める（Chrome 以外のブラウザ。shared/phrase.js）
+ */
 export async function loadTexts(url = 'texts.json') {
-  return new Texts(forDevice(await loadJSON(url), isTouchDevice()));
+  const texts = new Texts(forDevice(await loadJSON(url), isTouchDevice()));
+  startPhraseBreaks();
+  return texts;
 }
 
 /** { "pc": …, "touch": … } の形の値を、端末に合わせて片方にする（配列や入れ子の中も） */

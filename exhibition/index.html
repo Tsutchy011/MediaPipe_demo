@@ -6,11 +6,14 @@
   <title>自分の身体の反応を見てみよう｜MediaPipe デモ</title>
   <link rel="stylesheet" href="shared/style.css">
   <style>
-    main { padding: 20px; display: grid; gap: 16px; max-width: 1100px; margin: 0 auto; }
-    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; }
-    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+    main { padding: 20px 16px 28px; display: grid; gap: 18px; max-width: 1100px; margin: 0 auto; }
+    .lead { margin: 0; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(280px, 100%), 1fr)); gap: 16px; }
+    /* カードは同じ高さにそろえ、「試す」のボタンはカードの下の中央に置く */
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 20px 22px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06); }
     .card h2 { font-size: 1.25rem; margin: 0; }
-    .card a.btn { justify-self: start; }
+    .card p { margin: 0; flex: 1; }
+    .card .btn { align-self: center; min-width: 11em; margin-top: 8px; padding: 12px 32px; font-size: 1.1rem; border-radius: 999px; text-decoration: none; }
   </style>
 </head>
 <body>
@@ -19,7 +22,7 @@
     <span class="privacy">🔒 カメラの映像はこの端末の中だけで処理し、保存も送信もしません。</span>
   </header>
   <main>
-    <p>カメラ映像から手・顔・体の特徴点を推定（MediaPipe）し、動きを数値にしてリアルタイムに表示します。パソコンの Chrome で開くのがおすすめです。</p>
+    <p class="lead">カメラ映像から手・顔・体の特徴点を推定し、動きを数値にしてリアルタイムに表示します。パソコンの Chrome で開くのがおすすめです。</p>
     <div class="cards">
       <section class="card">
         <h2>指の速さと音の強さ</h2>
@@ -39,5 +42,10 @@
     </div>
     <p class="muted small">カメラがない場合は、各ページの「カメラなしで試す（ダミー入力）」で画面の流れだけを確かめられます。</p>
   </main>
+  <script type="module">
+    // 日本語の文を、単語の途中で改行しない（Chrome 以外のブラウザ。shared/phrase.js）
+    import { startPhraseBreaks } from './shared/phrase.js';
+    startPhraseBreaks();
+  </script>
 </body>
 </html>
