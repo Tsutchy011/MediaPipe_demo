@@ -246,3 +246,19 @@
   white-space: nowrap;
   font-size: 1rem;
 }
+
+/* スマホ（幅の狭い画面）：結果の弱・強は左右に並べたまま、速さと音の強さの欄は、名前の下に棒と数値を置いて画面の幅に収める */
+@media (max-width: 600px) {
+  .cmp {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .meter {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 2px;
+  }
+
+  .meter > span:first-child {
+    grid-column: 1 / -1;
+  }
+}

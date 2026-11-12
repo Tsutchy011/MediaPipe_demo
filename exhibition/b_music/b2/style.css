@@ -27,14 +27,20 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* お手本の図は、置き場所の幅に合わせて縮める（図は、大きさに合わせて描き直される）。幅に余裕があれば今までの大きさ。
+   結果の「お手本」「あなた」は、2つ並ばない幅（スマホなど）では上下に並べる */
 .figure-row {
   display: flex;
   gap: 14px;
   justify-content: center;
+  flex-wrap: wrap;
 }
 
 .figure-box {
   text-align: center;
+  flex: 1 1 280px;
+  min-width: 0;
+  max-width: 350px;
 }
 
 .figure-box h3 {
@@ -43,8 +49,9 @@
 }
 
 .figure {
-  width: 350px;
-  height: 175px;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 350 / 175;
   display: block;
   background: var(--surface-2);
   border-radius: 12px;
@@ -102,10 +109,13 @@
   cursor: pointer;
 }
 
-/* 体験中のお手本の図（正面と上からを並べるので横長） */
+/* 体験中のお手本の図（正面と上からを並べるので横長。幅は 460 px まで） */
+#liveView .figure-box {
+  max-width: 460px;
+}
+
 #modelFig {
-  width: 460px;
-  height: 220px;
+  aspect-ratio: 460 / 220;
 }
 
 #cRecord {
