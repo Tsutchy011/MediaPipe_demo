@@ -7,7 +7,7 @@
 //       奥行きの推定が安定しない（2026-11-11 HUMAN：2d を使う）。
 // どちらも、2本の線の傾きからではなく、ベクトルのなす角で求める（上腕がまっすぐ縦になっても計算できる）。
 
-import { bodyPoints, BODY, FRONT_CAM, deg3dFromCamera } from './bowing.js';
+import { bodyPoints, BODY, FRONT_CAM, posFromCamera, posFrom3d } from './bowing.js';
 
 const clamp = (x, lo, hi) => Math.min(hi, Math.max(lo, x));
 const isNum = (x) => typeof x === 'number' && Number.isFinite(x);
@@ -188,6 +188,106 @@ export function compareCurves(m, p, dt, { maxLagSec = 0.8, dtwBandSec = 0.5, sco
   return { mae: base.mae, lag, lagMae, dtw, score, r, validRatio: n ? valid / n : 0 };
 }
 
+/** 2つの列の、そろって測れている点どうしの相関係数（点が少なすぎるときは NaN） */
+function pearson(a, b, minN) {
+  let n = 0;
+  let sa = 0;
+  let sb = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (!isNum(a[i]) || !isNum(b[i])) continue;
+    n++;
+    sa += a[i];
+    sb += b[i];
+  }
+  if (n < minN) return NaN;
+  const ma = sa / n;
+  const mb = sb / n;
+  let sab = 0;
+  let saa = 0;
+  let sbb = 0;
+  for (let i = 0; i < a.length; i++) {
+    if (!isNum(a[i]) || !isNum(b[i])) continue;
+    sab += (a[i] - ma) * (b[i] - mb);
+    saa += (a[i] - ma) ** 2;
+    sbb += (b[i] - mb) ** 2;
+  }
+  return saa > 0 && sbb > 0 ? sab / Math.sqrt(saa * sbb) : NaN;
+}
+
+/** 平均とばらつき（標準偏差） */
+function meanSd(v) {
+  const xs = v.filter(isNum);
+  if (!xs.length) return { mean: NaN, sd: NaN };
+  const mean = xs.reduce((a, b) => a + b, 0) / xs.length;
+  return { mean, sd: Math.sqrt(xs.reduce((a, b) => a + (b - mean) ** 2, 0) / xs.length) };
+}
+
+/**
+ * タイミングの一致度（2026-11-12 HUMAN：カメラの画角しだいで角度の大きさは変わるので、角度の値ではなく、タイミングで点数を出す）。
+ * お手本（m）と来場者（p）の角度の列（同じ時刻、間隔 dt 秒）を、それぞれなめらかにし（smoothSec）、相関で比べる。
+ * 相関は、角度の大きさ（何倍か）と位置（何度ずれているか）によらず、動きの形と時刻がそろっているほど 1 に近い。
+ *   lag   ：ずらして相関がいちばん高くなる時間（maxLagSec まで。来場者が何秒遅れていたか。マイナスは早め）
+ *   rTol  ：timingTolSec 秒までのずれを許したときの、いちばん高い相関（見てから動くまでの遅れくらいは許す）
+ *   score ：一致度（0〜100 点）= 100 ×（rTol − scoreFloorR）÷（1 − scoreFloorR）。scoreFloorR 以下は 0 点
+ *   map   ：来場者の角度を、お手本の大きさにそろえる式 {a, b}（a·p + b。結果のグラフと並べた再生に使う）
+ *   moved ：来場者が動いたか（なめらかにした角度のばらつきが minMoveDeg 以上）。動いていなければ 0 点
+ *   smoothYou：なめらかにした来場者の角度（欠けた短いところはつないである）
+ * お手本の線では、0.25 秒のずれで相関 0.81、0.5 秒で 0.43、0.75 秒で 0 くらいになる（一つの弓が 1〜1.4 秒と短いため）。
+ */
+export function compareTiming(m, p, dt, { maxLagSec = 0.8, timingTolSec = 0.25, scoreFloorR = 0.4, smoothSec = 0.2, gapFillSec = 0.3, minMoveDeg = 1.5 } = {}) {
+  const n = Math.min(m.length, p.length);
+  const pv = fillGaps(p.slice(0, n), Math.round(gapFillSec / dt));
+  const k = Math.max(0, Math.round(smoothSec / dt / 2));
+  const smooth = (v) =>
+    v.map((_, i) => {
+      let s = 0;
+      let c = 0;
+      for (let j = Math.max(0, i - k); j <= Math.min(n - 1, i + k); j++) {
+        if (isNum(v[j])) {
+          s += v[j];
+          c++;
+        }
+      }
+      return c ? s / c : NaN;
+    });
+  const ms = smooth(m.slice(0, n));
+  const ps = smooth(pv);
+  const valid = pv.filter(isNum).length;
+  const sm = meanSd(ms);
+  const sp = meanSd(ps);
+  const moved = isNum(sp.sd) && sp.sd >= minMoveDeg;
+  // ずらして比べる（来場者を s 点あとにずらす＝来場者が s 点遅れていた）
+  const corrAt = (shift) => {
+    const a = [];
+    const b = [];
+    for (let i = 0; i < n; i++) {
+      const j = i + shift;
+      if (j < 0 || j >= n) continue;
+      a.push(ms[i]);
+      b.push(ps[j]);
+    }
+    return pearson(a, b, Math.max(10, Math.round(n / 2)));
+  };
+  const maxShift = Math.round(maxLagSec / dt);
+  const tolShift = Math.round(timingTolSec / dt);
+  let lag = NaN;
+  let rBest = NaN;
+  let rTol = NaN;
+  for (let s = -maxShift; s <= maxShift; s++) {
+    const r = corrAt(s);
+    if (!isNum(r)) continue;
+    if (!isNum(rBest) || r > rBest) {
+      rBest = r;
+      lag = s * dt;
+    }
+    if (Math.abs(s) <= tolShift && (!isNum(rTol) || r > rTol)) rTol = r;
+  }
+  const r0 = corrAt(0);
+  const score = !moved ? 0 : isNum(rTol) ? Math.round(100 * clamp((rTol - scoreFloorR) / (1 - scoreFloorR), 0, 1)) : NaN;
+  const map = moved && sm.sd > 0 ? { a: sm.sd / sp.sd, b: sm.mean - (sm.sd / sp.sd) * sp.mean } : { a: 1, b: 0 };
+  return { score, lag, rBest, rTol, r: r0, moved, map, validRatio: n ? valid / n : 0, sdModel: sm.sd, sdYou: sp.sd, smoothYou: ps };
+}
+
 /** 等間隔の列 arr（rate 点/秒）から、時刻 t（秒）の値を求める */
 function sampleAt(arr, rate, t) {
   const x = t * rate;
@@ -202,22 +302,26 @@ export function modelAt(model, t) {
   return sampleAt(model.angle, model.rate, t);
 }
 
-/** お手本の3次元の肘の角度（図とカメラに重ねる腕を描くのに使う）。記録したお手本（2d）は、カメラの角度から逆に求める */
-export function model3dAt(model, t) {
-  if (Array.isArray(model.angle3d) && model.angle3d.length === model.angle.length) return sampleAt(model.angle3d, model.rate, t);
+/**
+ * お手本の弓の位置（0＝弓元、1＝弓先。図とカメラに重ねる腕を描くのに使う）。決まった形のお手本は pos を持つ。
+ * 記録したお手本は、角度から逆に求める（2d はカメラから見た角度から、3d は3次元の角度から）
+ */
+export function modelPosAt(model, t) {
+  if (Array.isArray(model.pos) && model.pos.length === model.angle.length) return sampleAt(model.pos, model.rate, t);
   const a = modelAt(model, t);
-  return model.angleMode === '3d' ? a : deg3dFromCamera(a);
+  return model.angleMode === '3d' ? posFrom3d(a) : posFromCamera(a);
 }
 
 /**
  * ダミーの体（カメラがないときに、画面と流れを確かめる用）。
- * ヴァイオリンの弓を動かすように、肘の角度 angleAt(t) に合わせて右手を斜め前に出し入れする（bowing.js の3次元のモデル）。
- * 3次元の点を、正面 camDistM メートルのカメラで写した画像のランドマーク（landmarks）と、worldLandmarks の両方を作る
+ * ヴァイオリンの弓を動かすように、弓の位置 posAt(t)（0＝弓元、1＝弓先）に合わせて右腕を動かす（bowing.js の3次元のモデル）。
+ * 3次元の点を、正面 camDistM メートルのカメラ（焦点距離は画像の幅の focal 倍。0.72 で横の画角 約 70°、ノートパソコンの
+ * カメラくらい）で写した画像のランドマーク（landmarks）と、worldLandmarks の両方を作る
  * （本人の右腕は画像の左側に写る。手がカメラに近づくと、画像の上の2次元の角度は、本当の角度からずれる）。
  */
 export class DummyPose {
-  constructor({ camDistM = FRONT_CAM.distM, focal = 1.0 } = {}) {
-    this.angleAt = (t) => 120 + 30 * Math.sin(t * 0.7);
+  constructor({ camDistM = FRONT_CAM.distM, focal = 0.72 } = {}) {
+    this.posAt = (t) => 0.5 + 0.5 * Math.sin(t * 0.7); // 弓の位置（0＝弓元、1＝弓先）
     this.w = 1280;
     this.h = 720;
     this.camDistM = camDistM;
@@ -226,8 +330,8 @@ export class DummyPose {
 
   result(tMs) {
     const t = tMs / 1000;
-    const deg = clamp(this.angleAt(t) + 2 * Math.sin(t * 9), 20, 180);
-    const pts = bodyPoints(deg);
+    const pos = this.posAt(t) + 0.01 * Math.sin(t * 9);
+    const pts = bodyPoints(pos);
     const sway = 0.012 * Math.sin(t * 1.3);
     const lm = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5, z: 0, visibility: 0.2 }));
     const world = Array.from({ length: 33 }, () => ({ x: 0, y: 0, z: 0, visibility: 0.2 }));

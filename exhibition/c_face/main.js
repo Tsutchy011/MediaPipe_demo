@@ -20,7 +20,7 @@ const DEFAULTS = {
   metrics: { closeGap: 0.04, closeThreshold: 0.4, minCloseSec: 0.03, mergeGapSec: 0.08, releaseSec: 0.35, releaseOpening: 0.12 },
   task: { countdownSec: 3, vowels: ['あ', 'い', 'う', 'え', 'お'], vowelSec: 1.2, byeWord: 'バイバイ', byeSec: 3, tailSec: 0.8 },
   live: { windowSec: 8 },
-  blendshapes: ['jawOpen', 'mouthClose', 'mouthPucker', 'mouthFunnel', 'mouthStretchLeft', 'mouthPressLeft'],
+  blendshapes: [], // ブレンドシェイプの棒を出すときは名前を並べる（例：'jawOpen', 'mouthClose'）。空なら出さず、計算もしない
   faceLostSec: 0.6,
   anim: { align: 'eyesNose', smoothFrames: 2 },
 };
@@ -75,10 +75,12 @@ const resB = chartSet([$('#rB1'), $('#rB2'), $('#rB3')], { xTickFormat: (s) => `
 const animCharts = chartSet([$('#aOpen'), $('#aWidth'), $('#aClose')], { xTickFormat: (s) => `${s.toFixed(1)}秒` });
 for (const c of [resA[2], resB[2], animCharts[2]]) c.hlines.push({ v: cfg.metrics.closeThreshold, color: 'rgba(213,94,0,0.4)' });
 
-// ===== ブレンドシェイプの棒 =====
+// ===== ブレンドシェイプの棒（config の blendshapes に名前を並べたときだけ。2026-11-12 HUMAN：出さない＝空） =====
+const blendNames = Array.isArray(cfg.blendshapes) ? cfg.blendshapes : [];
 const blendRows = new Map();
+$('#blendBox').hidden = !blendNames.length;
 $('#blend').replaceChildren(
-  ...cfg.blendshapes.map((name) => {
+  ...blendNames.map((name) => {
     const fill = h('div', { class: 'bar-fill' });
     const val = h('span', { class: 'bar-val' }, '--');
     blendRows.set(name, { fill, val });
@@ -95,7 +97,7 @@ const cam = new CameraInput({
   overlay,
   msg: $('#videoMsg'),
   kind: 'face',
-  options: { numFaces: 1, outputFaceBlendshapes: true },
+  options: { numFaces: 1, outputFaceBlendshapes: blendNames.length > 0 },
   onResult,
   dummy: (tMs) => dummyFace.result(tMs),
   mirror: cfg.camera.mirror,
@@ -116,11 +118,13 @@ function onResult(result, tMs, info) {
   S.close.push(t, m?.closure);
   rec.push(t, lm, info.size.w, info.size.h);
   if (m) lastFaceT = t;
-  const bs = blendshapeMap(result);
-  for (const [name, row] of blendRows) {
-    const v = bs[name];
-    row.fill.style.width = `${isNum(v) ? Math.round(v * 100) : 0}%`;
-    row.val.textContent = isNum(v) ? v.toFixed(2) : '--';
+  if (blendRows.size) {
+    const bs = blendshapeMap(result);
+    for (const [name, row] of blendRows) {
+      const v = bs[name];
+      row.fill.style.width = `${isNum(v) ? Math.round(v * 100) : 0}%`;
+      row.val.textContent = isNum(v) ? v.toFixed(2) : '--';
+    }
   }
 }
 

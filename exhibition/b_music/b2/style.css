@@ -121,3 +121,8 @@
 #cRecord {
   height: 220px;
 }
+
+/* 体験中（角度のグラフを出さないとき）は、お手本の図を大きく */
+#liveView.figure-only .figure-box {
+  max-width: 680px;
+}

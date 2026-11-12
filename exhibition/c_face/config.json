@@ -40,14 +40,8 @@
   "live": {
     "windowSec": 8
   },
-  "blendshapes": [
-    "jawOpen",
-    "mouthClose",
-    "mouthPucker",
-    "mouthFunnel",
-    "mouthStretchLeft",
-    "mouthPressLeft"
-  ],
+  "blendshapes": [],
+  "_blendshapes": "AI（MediaPipe）が推定した表情の動き（ブレンドシェイプ）の棒を、いまの口の動きの下に出すときは、名前を並べる（例：jawOpen、mouthClose、mouthPucker、mouthFunnel、mouthStretchLeft、mouthPressLeft。文は texts.json の blend）。空なら出さず、計算もしない（2026-11-12 HUMAN：削除）",
   "faceLostSec": 0.6,
   "_camera": "mirror：\"auto\" はインカメ（Web カメラ・前面カメラ）なら左右反転、背面カメラなら反転しない（true / false で固定もできる）",
   "anim": {

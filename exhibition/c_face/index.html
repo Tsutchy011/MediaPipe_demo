@@ -49,8 +49,11 @@
           <canvas id="cWidth" class="chart chart-mini"></canvas>
           <canvas id="cClose" class="chart chart-mini"></canvas>
           <p class="muted small" data-text="metrics.unit"></p>
-          <h3 class="blend-title" data-text="blend.title"></h3>
-          <div id="blend" class="bars"></div>
+          <!-- ブレンドシェイプの棒（config.json の blendshapes に名前を並べたときだけ出す。2026-11-12 HUMAN：出さない） -->
+          <div id="blendBox" hidden>
+            <h3 class="blend-title" data-text="blend.title"></h3>
+            <div id="blend" class="bars"></div>
+          </div>
         </section>
 
         <!-- 結果（グラフで見る／アニメーションで確かめる） -->

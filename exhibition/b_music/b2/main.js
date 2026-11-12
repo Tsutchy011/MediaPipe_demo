@@ -3,13 +3,17 @@
 // - はじめの説明はスライド（shared/slides.js）。最後のスライドで体験が始まり、結果のあとは最初のスライドに戻る。
 // - カメラの映像から肩・肘・手首の位置を推定し（MediaPipe Pose Landmarker）、肘の角度を求める（pose_metrics.js）。
 //   比べるのは、カメラから見た2次元の角度（画像の上の角度。奥行きの推定は安定しないため。2026-11-11 HUMAN）。
-// - お手本は、ヴァイオリンの弓の動きの3次元のモデル（bowing.js）：弓元で肘を曲げて手が体の前に、弓先で伸ばして手が
-//   右斜め前へ出る。グラフのお手本の線は、この動きを正面のカメラから見た2次元の角度。図とカメラに重ねる腕は3次元のまま描く。
+// - お手本は、ヴァイオリンの弓の動きの3次元のモデル（bowing.js）。2026-11-12 HUMAN が弓を持ったつもりで自然に動かした
+//   動画の最後の3回に合わせた：弓元（手は胸の前の左寄り）から、右斜め下・前へ 1.4 秒かけてダウン → すぐに 1.0 秒でアップ →
+//   0.8 秒休む、を3回（はじめに 1 秒構える。10.6 秒）。動きは弓の位置 pos（0＝弓元、1＝弓先）で表し、グラフのお手本の線は、
+//   この動きを正面のカメラ（model.camDistM）から見た2次元の角度。図とカメラに重ねる腕は3次元のまま描く。
 // - カメラの映像には、お手本の腕（青）を重ね、いま動かす向き（矢印）と、この弓の行き先（青い点線の腕）、
 //   弓を返すところ（U の字の矢印）を予告する。
-// - 流れ：立ち位置の確認（枠の中に肩が入り、腕が見えている状態が holdSec 続いたら）→ カウントダウン →
-//   お手本の長さだけ、お手本の腕の図に合わせて肘を曲げ伸ばし → 結果（お手本と自分の角度の線を重ね、一致度・タイミング・
-//   角度のずれ。お手本と自分の腕を並べて再生）。
+// - 流れ（2026-11-12 HUMAN）：立ち位置の確認（枠の中に肩が入り、腕が見えている状態が holdSec 続いたら）→
+//   「お手本を見てください」（青い腕がお手本を1回通して動く。記録はしない）→「まずは練習してみましょう」（カウントダウン →
+//   練習を1回。一致度には使わない）→「次は本番です。お手本に合わせて動かしてみましょう」（カウントダウン）→ お手本の長さだけ、
+//   青い腕に合わせて動かす → 結果（ここで初めてグラフ：お手本と自分の角度の線を重ね、一致度・タイミング・角度のずれ。
+//   お手本と自分の腕を並べて再生）。体験中は、角度のグラフを出さない。
 // - お手本：このブラウザで記録したもの（スタッフが O キーで記録）→ model.json（あれば）→ 決まった形 の順に使う。
 //   ファイルへの保存（JSON）と、ファイルからの読み込みもできる。
 // - 研究デモモード（自由に試す）：肘の角度をそのままグラフに出す。
@@ -22,19 +26,19 @@ import { drawConnections, drawPoints } from '../../shared/mediapipe.js';
 import { showScreen, setStatus, toggleFullscreen, requireHttp, fatal, banner } from '../../shared/ui.js';
 import { Slides } from '../../shared/slides.js';
 import { $, isNum, nowSec, clamp, fmt, flag } from '../../shared/util.js';
-import { ARM, UPPER_BODY, elbowAngle, elbowAngle3D, checkGuide, compareCurves, modelAt, model3dAt, DummyPose } from './pose_metrics.js';
-import { drawViolinist, ghostArm, cameraAngle, deg3dFromCamera, STROKE } from './bowing.js';
+import { ARM, UPPER_BODY, elbowAngle, elbowAngle3D, checkGuide, compareCurves, compareTiming, modelAt, modelPosAt, DummyPose } from './pose_metrics.js';
+import { drawViolinist, ghostArm, cameraAngle, elbowAngle3d, posFromCamera, posFrom3d, FRONT_CAM } from './bowing.js';
 
 const DEFAULTS = {
   camera: { width: 1280, height: 720, facingMode: 'user', mirror: 'auto', fps: 30, delegate: 'GPU', model: 'pose' },
   arm: 'right',
   angleMode: '2d',
   minVisibility: 0.5,
-  guide: { centerX: [0.3, 0.7], shoulderY: [0.2, 0.6], shoulderWidth: [0.1, 0.38], holdSec: 1 },
-  task: { countdownSec: 3, leadSec: 1, ghost: true, ghostDistM: 2 },
+  guide: { centerX: [0.3, 0.7], shoulderY: [0.2, 0.6], shoulderWidth: [0.18, 0.45], holdSec: 1 },
+  task: { countdownSec: 3, leadSec: 1, ghost: true, demo: true, practice: true },
   figure: { front: { yawDeg: 0, pitchDeg: 12, distM: 2.4 }, top: { distM: 5 } },
-  model: { url: 'model.json', recordSec: 10.5, rate: 30, smoothSec: 0.2, beatSec: 0.75, strokes: 3 },
-  metrics: { maxLagSec: 0.8, dtwBandSec: 0.5, scoreScaleDeg: 'auto', gapFillSec: 0.3, minValidRatio: 0.6, goodScore: 80 },
+  model: { url: 'model.json', recordSec: 10.6, rate: 30, smoothSec: 0.2, camDistM: 0.9, leadSec: 1.0, downSec: 1.4, upSec: 1.0, restSec: 0.8, strokes: 3 },
+  metrics: { maxLagSec: 0.8, timingTolSec: 0.25, scoreFloorR: 0.4, smoothSec: 0.2, minMoveDeg: 1.5, lagMinR: 0.6, dtwBandSec: 0.5, scoreScaleDeg: 'auto', gapFillSec: 0.3, minValidRatio: 0.6, goodScore: 80, showAngleDiff: false },
   live: { yRange: [30, 185], freeWindowSec: 10 },
 };
 const MODEL_KEY = 'b2-model';
@@ -56,59 +60,47 @@ const COL = { model: color('--c1', '#2563eb'), you: color('--c2', '#ea580c'), ok
 
 // ===== 状態 =====
 const angle = new TimeSeries(20000); // 肘の角度（度）。時刻は performance.now() 基準の秒
-const ui = { screen: 'intro', mode: 'exp', phase: null, t0: 0, countdownEnd: 0, guideOkSince: null, result: null, replay: null, rec: null };
+const ui = { screen: 'intro', mode: 'exp', phase: null, t0: 0, demoT0: 0, countdownEnd: 0, guideOkSince: null, result: null, replay: null, rec: null };
 let guide = { ok: false, reason: 'none' };
 let lastAngle = NaN;
-const dummyPose = new DummyPose();
+// お手本の線・カメラに重ねる腕・ダミーの体は、同じカメラの距離で写す（この動きは、手がカメラの方へ出ていくので距離で角度が変わる）
+FRONT_CAM.distM = cfg.model.camDistM;
+const dummyPose = new DummyPose({ camDistM: cfg.model.camDistM });
 
 // ===== お手本 =====
 let model = null;
 let modelSource = 'builtin';
 
-/** 0 → 1 へ、時間 d で動く。はじめと終わりの e 秒だけ加速・減速し、あいだは一定の速さ（弓の速さを一定にして弾く全音符） */
-function steadyStroke(t, d, e) {
-  const ee = Math.min(e, d / 2);
-  const v = 1 / (d - ee);
-  if (t <= 0) return 0;
-  if (t >= d) return 1;
-  if (t < ee) return (0.5 * v * t * t) / ee;
-  if (t > d - ee) return 1 - (0.5 * v * (d - t) * (d - t)) / ee;
-  return 0.5 * v * ee + v * (t - ee);
-}
+/** 0 → 1 へ、なめらかに動く（はじめと終わりがゆっくり。動画の動きに合う） */
+const ease = (x) => 0.5 - 0.5 * Math.cos(Math.PI * clamp(x, 0, 1));
 
 /**
- * 決まった形のお手本：ヴァイオリンの弓の動き。全弓で全音符を strokes 回（ダウン → アップ → ダウン …。
- * 1拍 beatSec＝0.75 秒（♩=80）、全音符は 3 秒）。弓元（3次元の肘の角度 75°、手は体の前）で 1 拍構える →
- * 全弓で弓先（160°、手は右斜め前へ）までダウン → アップで弓元へ → … → 最後の位置で 1 拍止める（2026-11-11 HUMAN）。
- * 弓の速さを一定にするので、手は一定の速さで動き、弓を返すところ（0.25 秒）だけ、なめらかに減速・加速する。
- * angle（グラフで比べる角度）は、angleMode が 2d なら、この動きを正面のカメラから見た2次元の角度。angle3d は図に使う。
+ * 決まった形のお手本：ヴァイオリンの弓の動き。2026-11-12 HUMAN が弓を持ったつもりで自然に動かした動画の、最後の3回に合わせた
+ * （3回の平均：ダウン 1.37 秒 → すぐにアップ 0.96 秒 → 0.82 秒休む。1回 3.15 秒）。
+ * 弓元で leadSec 構える → ダウン（downSec）→ アップ（upSec）→ 休む（restSec）を strokes 回。動きは弓の位置 pos（0＝弓元、1＝弓先）。
+ * angle（グラフで比べる角度）は、angleMode が 2d なら、この動きを正面のカメラ（camDistM）から見た2次元の角度。pos は図に使う。
  */
 function builtinModel(rate = cfg.model.rate) {
-  const beat = cfg.model.beatSec;
-  const whole = 4 * beat;
-  const frog = STROKE.frogDeg;
-  const tip = STROKE.tipDeg;
-  const segs = [[beat, frog, frog]];
-  for (let k = 0; k < Math.max(1, cfg.model.strokes); k++) segs.push(k % 2 === 0 ? [whole, frog, tip] : [whole, tip, frog]);
-  const last = segs[segs.length - 1][2];
-  segs.push([beat, last, last]);
+  const m = cfg.model;
+  const segs = [[m.leadSec, 0, 0]];
+  for (let k = 0; k < Math.max(1, m.strokes); k++) segs.push([m.downSec, 0, 1], [m.upSec, 1, 0], [m.restSec, 0, 0]);
   const total = segs.reduce((a, sg) => a + sg[0], 0);
-  const a3 = [];
-  const a2 = [];
+  const pos = [];
+  const ang = [];
   for (let i = 0; i <= Math.round(total * rate); i++) {
     let t = i / rate;
-    let v = last;
+    let v = 0;
     for (const [d, a, b] of segs) {
       if (t <= d) {
-        v = a + (b - a) * steadyStroke(t, d, 0.25);
+        v = a + (b - a) * ease(d > 0 ? t / d : 1);
         break;
       }
       t -= d;
     }
-    a3.push(+v.toFixed(2));
-    a2.push(+(cfg.angleMode === '3d' ? v : cameraAngle(v)).toFixed(2));
+    pos.push(+v.toFixed(4));
+    ang.push(+(cfg.angleMode === '3d' ? elbowAngle3d(v) : cameraAngle(v)).toFixed(2));
   }
-  return { version: 2, angleMode: cfg.angleMode, name: texts.get('record.builtin'), arm: cfg.arm, rate, durationSec: total, angle: a2, angle3d: a3 };
+  return { version: 2, angleMode: cfg.angleMode, camDistM: m.camDistM, name: texts.get('record.builtin'), arm: cfg.arm, rate, durationSec: total, angle: ang, pos };
 }
 
 const validModel = (m) => !!m && Array.isArray(m.angle) && m.angle.length > 10 && isNum(m.rate) && m.rate > 0 && m.angle.every(isNum);
@@ -234,11 +226,12 @@ const cam = new CameraInput({
 });
 $('#mirror').onchange = (e) => cam.setMirror(e.target.checked);
 
-// ダミーの体：体験中はお手本に少し遅れて動く。それ以外はゆっくり揺れる
-dummyPose.angleAt = (t) => {
-  if (ui.mode === 'exp' && ui.phase === 'trial') return model3dAt(model, t - ui.t0 - 0.25) + 6 * Math.sin(t * 1.7);
-  if (ui.mode === 'exp' && (ui.phase === 'position' || ui.phase === 'countdown')) return model3dAt(model, 0);
-  return 120 + 50 * Math.sin(t * 0.9);
+// ダミーの体（弓の位置）：体験中はお手本に少し遅れて動く。お手本を見ているあいだとカウントダウンは弓元で止まる。それ以外はゆっくり動く
+dummyPose.posAt = (t) => {
+  if (ui.mode === 'exp' && ui.phase === 'trial') return modelPosAt(model, t - ui.t0 - 0.25) + 0.04 * Math.sin(t * 1.7);
+  if (ui.mode === 'exp' && ui.phase === 'practice') return modelPosAt(model, t - ui.t0 - 0.6) + 0.08 * Math.sin(t * 1.3); // 練習：少し遅れて、ぶれる
+  if (ui.mode === 'exp' && ['position', 'demo', 'pracCountdown', 'countdown'].includes(ui.phase)) return modelPosAt(model, 0);
+  return 0.5 + 0.5 * Math.sin(t * 0.9);
 };
 
 function onResult(result, tMs, info) {
@@ -256,12 +249,12 @@ function onResult(result, tMs, info) {
   if (ui.mode === 'exp' && ui.phase === 'position') {
     if (guide.ok) {
       ui.guideOkSince ??= nowSec();
-      if (nowSec() - ui.guideOkSince >= cfg.guide.holdSec) startCountdown();
+      if (nowSec() - ui.guideOkSince >= cfg.guide.holdSec) startDemo();
     } else ui.guideOkSince = null;
   }
   // 描く：立ち位置の枠、体の線（測る腕は色を変える）
   octx.clearRect(0, 0, w, h);
-  if (ui.screen === 'main' && ui.mode === 'exp' && (ui.phase === 'position' || ui.phase === 'countdown')) {
+  if (ui.screen === 'main' && ui.mode === 'exp' && ['position', 'pracCountdown', 'countdown'].includes(ui.phase)) {
     const g = cfg.guide;
     octx.setLineDash([12, 10]);
     octx.lineWidth = 4;
@@ -272,8 +265,9 @@ function onResult(result, tMs, info) {
   if (lm) {
     const armIdx = ARM[cfg.arm];
     // お手本の腕（青）：自分の肩から、お手本の腕と弓を重ね、これからの手の動きを矢印で予告する
-    if (cfg.task.ghost && ui.mode === 'exp' && (ui.phase === 'countdown' || ui.phase === 'trial')) {
-      drawGhostArm(lm, w, h, Math.max(0, t - ui.t0), ui.phase === 'countdown');
+    if (cfg.task.ghost && ui.mode === 'exp' && ui.phase === 'demo') drawGhostArm(lm, w, h, Math.max(0, t - ui.demoT0));
+    if (cfg.task.ghost && ui.mode === 'exp' && ['pracCountdown', 'practice', 'countdown', 'trial'].includes(ui.phase)) {
+      drawGhostArm(lm, w, h, Math.max(0, t - ui.t0), ui.phase === 'pracCountdown' || ui.phase === 'countdown');
     }
     drawConnections(octx, lm, UPPER_BODY, w, h, { color: 'rgba(255,255,255,0.7)', width: 3 });
     drawConnections(
@@ -295,9 +289,9 @@ function onResult(result, tMs, info) {
 // ===== お手本の腕を、カメラの映像に重ねる =====
 const blue = (al) => `rgba(59, 130, 246, ${al})`;
 
-/** お手本の3次元の肘の角度の変わる速さ（度/秒。ダウン＝弓先へで +） */
-const modelVel = (tau) => (model3dAt(model, tau + 0.05) - model3dAt(model, tau - 0.05)) / 0.1;
-const velSign = (v) => (Math.abs(v) < 5 ? 0 : Math.sign(v));
+/** お手本の弓の位置の変わる速さ（1 秒あたり。ダウン＝弓先へで +。弓元から弓先までが 1） */
+const modelVel = (tau) => (modelPosAt(model, tau + 0.05) - modelPosAt(model, tau - 0.05)) / 0.1;
+const velSign = (v) => (Math.abs(v) < 0.06 ? 0 : Math.sign(v));
 
 /**
  * 自分の肩から、お手本の時刻 tm の腕（上腕・前腕・手）と弓を描き（カメラの画像の座標）、これからの動きを予告する。
@@ -314,13 +308,14 @@ function drawGhostArm(lm, w, h, tm, countdown = false) {
   const O = lm[cfg.arm === 'left' ? 12 : 11];
   const vis = (p) => p && (p.visibility ?? 1) >= cfg.minVisibility;
   if (!vis(S) || !vis(O)) return;
-  const opt = { shoulder: [S.x * w, S.y * h], otherShoulder: [O.x * w, O.y * h], center: [w / 2, h / 2], distM: cfg.task.ghostDistM };
-  const g = ghostArm(model3dAt(model, tm), opt);
+  const opt = { shoulder: [S.x * w, S.y * h], otherShoulder: [O.x * w, O.y * h], center: [w / 2, h / 2], distM: cfg.model.camDistM };
+  const g = ghostArm(modelPosAt(model, tm), opt);
   if (!g) return;
   octx.lineCap = 'round';
   octx.lineJoin = 'round';
   const unitPx = g.pxPerM; // 1 メートルの画素数（肩幅から）
-  const handR = (gg) => Math.max(10, unitPx * 0.035 * gg.k);
+  // 手がカメラに近づくほど大きく描く。カメラが近い（model.camDistM）と、弓先で 2.5 倍ほどになるので、1.7 倍までにする
+  const handR = (gg) => Math.max(10, unitPx * 0.03 * Math.min(gg.k, 1.7));
   const arm = (gg) => {
     octx.beginPath();
     [gg.S, gg.E, gg.W, gg.H].forEach(([x, y], i) => (i ? octx.lineTo(x, y) : octx.moveTo(x, y)));
@@ -378,10 +373,10 @@ function drawGhostArm(lm, w, h, tm, countdown = false) {
       break;
     }
   }
-  const gEnd = ghostArm(model3dAt(model, tEnd), opt);
+  const gEnd = ghostArm(modelPosAt(model, tEnd), opt);
   // 弓の通り道の向き（画像の上。弓元 → 弓先）
-  const gF = ghostArm(STROKE.frogDeg, opt);
-  const gT = ghostArm(STROKE.tipDeg, opt);
+  const gF = ghostArm(0, opt);
+  const gT = ghostArm(1, opt);
   let rx = gT.H[0] - gF.H[0];
   let ry = gT.H[1] - gF.H[1];
   const rl = Math.hypot(rx, ry) || 1;
@@ -448,13 +443,13 @@ function drawGhostArm(lm, w, h, tm, countdown = false) {
 }
 
 // ===== お手本／自分の図（ヴァイオリンを弾く人） =====
-/** 測った角度を、図を描くための3次元の肘の角度にする（2d の角度は、カメラから見た角度から逆に求める） */
-const to3d = (a) => (!isNum(a) ? NaN : cfg.angleMode === '3d' ? a : deg3dFromCamera(a));
+/** 測った角度を、図を描くための弓の位置にする（2d はカメラから見た角度から、3d は3次元の角度から逆に求める） */
+const toPos = (a) => (!isNum(a) ? NaN : cfg.angleMode === '3d' ? posFrom3d(a) : posFromCamera(a));
 const figOpts = (labelDeg) => ({ front: cfg.figure.front, top: cfg.figure.top, labels: texts.get('figure'), labelDeg });
 /** お手本の時刻 tm の図（右上の数字は、グラフと同じ角度） */
-const drawModelFigure = (canvas, tm) => drawViolinist(canvas, model3dAt(model, tm), COL.model, figOpts(modelAt(model, tm)));
+const drawModelFigure = (canvas, tm) => drawViolinist(canvas, modelPosAt(model, tm), COL.model, figOpts(modelAt(model, tm)));
 /** 測った角度 a の図（あなた・自由に試す） */
-const drawAngleFigure = (canvas, a, col) => drawViolinist(canvas, to3d(a), col, figOpts(a));
+const drawAngleFigure = (canvas, a, col) => drawViolinist(canvas, toPos(a), col, figOpts(a));
 
 // ===== 画面の切り替え =====
 const slides = new Slides($('[data-screen="intro"]'), { slides: texts.get('slides'), labels: texts.get('slideNav'), onStart: () => startExperience() });
@@ -475,6 +470,12 @@ function setView(view) {
 function setMode(mode) {
   ui.mode = mode;
   setStatus($('#modeLabel'), mode === 'exp' ? 'ok' : 'warn', texts.get(`modeLabels.${mode}`));
+  // 体験中は角度のグラフを出さず、お手本の図とカメラの映像（青い腕）だけを見てもらう。グラフは結果で出す（2026-11-12 HUMAN）
+  $('#cAngle').hidden = mode === 'exp';
+  $('#liveView').classList.toggle('figure-only', mode === 'exp');
+  // お手本の図は体験のときだけ。自由に試す・お手本の記録では出さない（2026-11-12 HUMAN：自由モードでお手本が出るのはおかしい。
+  // 自分の角度をお手本の弓の動きに当てはめた図になり、自由に動かしたときの本当の腕の形とも合わないため）
+  $('#liveView .figure-row').hidden = mode !== 'exp';
 }
 
 async function startExperience() {
@@ -496,8 +497,26 @@ async function startExperience() {
   await ensureCamera();
 }
 
-function startCountdown() {
+/** 「お手本を見てください」：青い腕がお手本を1回通して動く（記録はしない）。終わったら練習へ */
+function startDemo() {
   if (ui.phase !== 'position') return;
+  if (!cfg.task.demo) return startPractice();
+  ui.phase = 'demo';
+  ui.demoT0 = nowSec() + 0.6; // 文を読む間を少しおいてから動かす
+}
+
+/** 「まずは練習してみましょう」：カウントダウンのあと、お手本の長さだけ練習する（一致度には使わない）。終わったら本番へ */
+function startPractice() {
+  if (ui.phase !== 'position' && ui.phase !== 'demo') return;
+  if (!cfg.task.practice) return startCountdown();
+  ui.phase = 'pracCountdown';
+  ui.countdownEnd = nowSec() + cfg.task.countdownSec;
+  ui.t0 = ui.countdownEnd;
+}
+
+/** 「次は本番です。お手本に合わせて動かしてみましょう」：カウントダウンのあと、お手本の長さだけ記録して比べる */
+function startCountdown() {
+  if (!['position', 'demo', 'pracCountdown', 'practice'].includes(ui.phase)) return;
   ui.phase = 'countdown';
   ui.countdownEnd = nowSec() + cfg.task.countdownSec;
   ui.t0 = ui.countdownEnd;
@@ -511,8 +530,10 @@ function finishTrial() {
     const t = ui.t0 + i / rate;
     return angle.stats(t - 0.5 / rate, t + 0.5 / rate).mean;
   });
-  // 一致度の目盛り：auto なら、お手本の角度の幅の 0.6 倍（ずれの平均がこの角度で 0 点。2次元の角度は幅がせまいため。
-  // 0.8 倍では、ピークにほとんど届かない動きでも 78 点になった）
+  // 一致度は、タイミングで決める（2026-11-12 HUMAN：カメラの画角しだいで角度の大きさは変わるので、角度の値は合わせにくい）。
+  // 角度の大きさと位置によらない相関で、動きの形と時刻がそろっているかを見る（pose_metrics.js の compareTiming）
+  const tm = compareTiming(model.angle, p, 1 / rate, cfg.metrics);
+  // 参考（スタッフ用。画面には出さない）：前の、角度の値で比べた一致度と角度のずれ（時間のずれを dtwBandSec まで許す）
   let lo = Infinity;
   let hi = -Infinity;
   for (const v of model.angle) {
@@ -520,7 +541,10 @@ function finishTrial() {
     hi = Math.max(hi, v);
   }
   const scale = cfg.metrics.scoreScaleDeg === 'auto' ? Math.max(15, 0.6 * (hi - lo)) : cfg.metrics.scoreScaleDeg;
-  ui.result = { ...compareCurves(model.angle, p, 1 / rate, { ...cfg.metrics, scoreScaleDeg: scale }), t0: ui.t0, dur: modelDuration(), scale };
+  const ref = compareCurves(model.angle, p, 1 / rate, { ...cfg.metrics, scoreScaleDeg: scale });
+  // 来場者の角度を、お手本の大きさにそろえた列（結果のグラフと、並べた再生の図に使う）
+  const yours = tm.smoothYou.map((v) => (isNum(v) ? tm.map.a * v + tm.map.b : NaN)); // なめらかにした値（大きさをそろえると、測りのゆれも大きくなるため）
+  ui.result = { ...tm, dtw: ref.dtw, mae: ref.mae, angleScore: ref.score, scale, yours, t0: ui.t0, dur: modelDuration() };
   showResult();
 }
 
@@ -533,22 +557,30 @@ function showResult() {
   const s = Math.abs(r.lag).toFixed(1);
   $('#lTiming').hidden = good;
   $('#vTiming').classList.toggle('good', good);
+  // 動いていない・動き方がお手本と違う（ずらしても相関が低い）ときは、遅れの秒数に意味がないので、別の文にする
   $('#vTiming').textContent = good
     ? texts.get('result.good')
     : !isNum(r.score)
       ? '--'
-      : Math.abs(r.lag) < 0.1
+      : r.moved === false
+        ? texts.get('result.noMove')
+        : !(r.rBest >= cfg.metrics.lagMinR)
+          ? texts.get('result.noMatch')
+          : Math.abs(r.lag) < 0.1
         ? texts.get('result.same')
         : r.lag > 0
           ? texts.get('result.late', { s })
           : texts.get('result.early', { s });
+  // 角度のずれ（平均）は、画角しだいで変わるので、ふつうは出さない（metrics.showAngleDiff で出せる）
+  $('#vDiff').parentElement.hidden = !cfg.metrics.showAngleDiff;
   $('#vDiff').textContent = isNum(r.dtw) ? `${Math.round(r.dtw)}°` : '--';
   $('#lowQuality').hidden = r.validRatio >= cfg.metrics.minValidRatio;
   resultChart.o.yRange = modelYRange(model);
   resultChart.series = [];
   resultChart.clearAnnotations();
   resultChart.addSeries({ data: modelSeries(model, r.t0), color: COL.model, width: 3, dash: [7, 5], label: texts.get('chart.model') });
-  resultChart.addSeries(youSeries);
+  // あなたの線は、角度の大きさをお手本にそろえて描く（タイミングの比べやすさのため。説明の文に書いてある）
+  resultChart.addSeries({ ...youSeries, data: TimeSeries.fromArrays(r.yours.map((_, i) => r.t0 + i / model.rate), r.yours) });
   resultChart.o.xOrigin = r.t0;
   resultChart.setXRange(r.t0 - 0.3, r.t0 + r.dur + 0.3);
   startReplay();
@@ -682,6 +714,9 @@ function frame() {
   const now = nowSec();
   if (ui.screen === 'main') {
     // 段階を進める
+    if (ui.mode === 'exp' && ui.phase === 'demo' && now >= ui.demoT0 + modelDuration() + 0.4) startPractice();
+    if (ui.mode === 'exp' && ui.phase === 'pracCountdown' && now >= ui.countdownEnd) ui.phase = 'practice';
+    if (ui.mode === 'exp' && ui.phase === 'practice' && now >= ui.t0 + modelDuration() + 0.2) startCountdown();
     if (ui.mode === 'exp' && ui.phase === 'countdown' && now >= ui.countdownEnd) ui.phase = 'trial';
     if (ui.mode === 'exp' && ui.phase === 'trial' && now >= ui.t0 + modelDuration() + 0.2) finishTrial();
     if (ui.mode === 'record' && ui.phase === 'recCountdown' && now >= ui.countdownEnd) ui.phase = 'recording';
@@ -691,7 +726,10 @@ function frame() {
     let msg = '';
     if (ui.mode === 'exp') {
       if (ui.phase === 'position') msg = `${guide.ok ? texts.get('guide.ok') : texts.get(`guide.${guide.reason}`)}`;
-      else if (ui.phase === 'countdown') msg = `${texts.get('task.ready')}　${Math.max(1, Math.ceil(ui.countdownEnd - now))}`;
+      else if (ui.phase === 'demo') msg = texts.get('task.demo');
+      else if (ui.phase === 'pracCountdown') msg = `${texts.get('task.practice')}　${Math.max(1, Math.ceil(ui.countdownEnd - now))}`;
+      else if (ui.phase === 'practice') msg = texts.get('task.practiceGo');
+      else if (ui.phase === 'countdown') msg = `${texts.get('task.next')}　${Math.max(1, Math.ceil(ui.countdownEnd - now))}`;
       else if (ui.phase === 'trial') msg = texts.get('task.go');
       else if (ui.phase === 'result') msg = texts.get('task.done');
     } else if (ui.mode === 'free') msg = texts.get('free.hint');
@@ -706,7 +744,9 @@ function frame() {
 
     // グラフとお手本の腕
     if (!$('#liveView').hidden) {
-      if (ui.mode === 'exp' && (ui.phase === 'countdown' || ui.phase === 'trial')) {
+      if (ui.mode === 'exp' && ui.phase === 'demo') {
+        drawModelFigure($('#modelFig'), Math.max(0, now - ui.demoT0));
+      } else if (ui.mode === 'exp' && ['pracCountdown', 'practice', 'countdown', 'trial'].includes(ui.phase)) {
         live.markers = [{ t: Math.max(ui.t0, now), label: texts.get('chart.now'), color: '#64748b', dash: [4, 4] }];
         drawModelFigure($('#modelFig'), Math.max(0, now - ui.t0));
       } else if (ui.mode === 'exp') {
@@ -714,9 +754,8 @@ function frame() {
       } else {
         live.follow(now, cfg.live.freeWindowSec);
         live.o.xOrigin = now;
-        drawAngleFigure($('#modelFig'), lastAngle, COL.you);
       }
-      live.draw();
+      if (!$('#cAngle').hidden) live.draw();
     }
     if (!$('#resultView').hidden && ui.result) {
       const r = ui.result;
@@ -732,7 +771,8 @@ function frame() {
       resultChart.draw();
       const at = r.t0 + Math.min(tau, r.dur);
       drawModelFigure($('#figModel'), Math.min(tau, r.dur));
-      drawAngleFigure($('#figYou'), angle.stats(at - 0.05, at + 0.05).mean, COL.you);
+      const iy = Math.round((at - r.t0) * model.rate);
+      drawAngleFigure($('#figYou'), r.yours[clamp(iy, 0, r.yours.length - 1)], COL.you);
     }
     if (!$('#recordView').hidden) recordChart.draw();
   }
@@ -774,7 +814,9 @@ window.addEventListener('keydown', (e) => {
   if (k === 'r') return startReplay();
   if (k === ' ' || k === 'Enter') {
     e.preventDefault();
-    if (ui.mode === 'exp' && ui.phase === 'position') startCountdown(); // スタッフ：枠に入らなくても始める
+    if (ui.mode === 'exp' && ui.phase === 'position') startDemo(); // スタッフ：枠に入らなくても始める
+    else if (ui.mode === 'exp' && ui.phase === 'demo') startPractice(); // スタッフ：お手本を見せるのを飛ばす
+    else if (ui.mode === 'exp' && (ui.phase === 'pracCountdown' || ui.phase === 'practice')) startCountdown(); // スタッフ：練習を飛ばす
     else if (ui.mode === 'exp' && ui.phase === 'result') goHome();
     else if (ui.mode === 'record' && ui.phase === 'recReady') beginRecording();
   }
@@ -797,4 +839,4 @@ showScreen('intro');
 requestAnimationFrame(frame);
 
 // 確認用（ブラウザの開発者ツールから見られる）
-window.__b2 = { cfg, ui, angle, cam, dummyPose, get model() { return model; }, get guide() { return guide; }, compareCurves, model3dAt, modelAt, deg3dFromCamera, cameraAngle };
+window.__b2 = { cfg, ui, angle, cam, dummyPose, get model() { return model; }, get guide() { return guide; }, compareCurves, compareTiming, modelPosAt, modelAt, posFromCamera, cameraAngle, builtinModel };

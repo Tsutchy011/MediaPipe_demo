@@ -92,7 +92,7 @@ export class CameraInput {
     if (this.mode === 'camera' || this.mode === 'dummy' || this.mode === 'loading') return true;
     if (flag('dummy')) return this.startDummy();
     this.mode = 'loading';
-    this._msg('カメラとAIの準備をしています…');
+    this._msg('カメラなどの起動中…'); // 2026-11-12 HUMAN（カメラと MediaPipe の準備のあいだ、映像の上に出す）
     try {
       const saved = deviceId || safeGet(CAMERA_KEY);
       try {
