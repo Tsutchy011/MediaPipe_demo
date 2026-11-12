@@ -34,6 +34,16 @@ export function isTouchDevice() {
   return typeof matchMedia === 'function' && matchMedia('(hover: none) and (pointer: coarse)').matches;
 }
 
+/**
+ * スマホか：指で操作する端末で、画面の短い辺が 600 px より小さい（タブレットとパソコンは含めない）。
+ * 確認用に、?phone=1 でスマホ、?phone=0 でスマホでないとして扱う（?touch=1・?touch=0 は isTouchDevice に効く）。
+ */
+export function isPhone() {
+  if (params.has('phone')) return flag('phone');
+  const short = typeof screen !== 'undefined' ? Math.min(screen.width, screen.height) : Infinity;
+  return isTouchDevice() && short < 600;
+}
+
 /** 中断できる待ち時間。signal が中断されたら AbortError で終わる */
 export function sleep(ms, signal) {
   return new Promise((resolve, reject) => {

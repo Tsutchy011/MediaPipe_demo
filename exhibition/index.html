@@ -29,7 +29,7 @@
         <p>鍵盤を弱く・強く弾いたときの、指先の速さを比べます。MIDI 鍵盤がなくても、画面の仮想ピアノを空中で弾いて試せます。</p>
         <a class="btn btn-primary" href="b_music/b1/">試す</a>
       </section>
-      <section class="card">
+      <section class="card" data-hide-on-phone>
         <h2>腕の動きをお手本に合わせる</h2>
         <p>ヴァイオリンの弓の動きのお手本に合わせて腕を動かし、肘の角度の線を重ねて、どのくらい一致したかを見ます。上半身が映るように、カメラから少し離れて試してください。</p>
         <a class="btn btn-primary" href="b_music/b2/">試す</a>
@@ -45,7 +45,10 @@
   <script type="module">
     // 日本語の文を、単語の途中で改行しない（Chrome 以外のブラウザ。shared/phrase.js）
     import { startPhraseBreaks } from './shared/phrase.js';
+    import { isPhone } from './shared/util.js';
     startPhraseBreaks();
+    // スマホでは、上半身が映るように離れて立つ体験（B-2）を出さない（2026-11-12 HUMAN）。?phone=1・?phone=0 で確かめられる
+    if (isPhone()) for (const el of document.querySelectorAll('[data-hide-on-phone]')) el.hidden = true;
   </script>
 </body>
 </html>

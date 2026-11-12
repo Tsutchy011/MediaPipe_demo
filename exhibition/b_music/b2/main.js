@@ -25,7 +25,7 @@ import { CameraInput, fillCameraSelect } from '../../shared/camera_ui.js';
 import { drawConnections, drawPoints } from '../../shared/mediapipe.js';
 import { showScreen, setStatus, toggleFullscreen, requireHttp, fatal, banner } from '../../shared/ui.js';
 import { Slides } from '../../shared/slides.js';
-import { $, isNum, nowSec, clamp, fmt, flag } from '../../shared/util.js';
+import { $, h, isNum, nowSec, clamp, fmt, flag, isPhone } from '../../shared/util.js';
 import { ARM, UPPER_BODY, elbowAngle, elbowAngle3D, checkGuide, compareCurves, compareTiming, modelAt, modelPosAt, DummyPose } from './pose_metrics.js';
 import { drawViolinist, ghostArm, cameraAngle, elbowAngle3d, posFromCamera, posFrom3d, FRONT_CAM } from './bowing.js';
 
@@ -56,6 +56,16 @@ try {
 texts.apply();
 // Web 版：お手本の記録・ファイルから読み込む・最初のお手本に戻す の行を出さない（2026-11-12 HUMAN）
 if (cfg.modelTools === false) $('#recordBtn').closest('.row').hidden = true;
+// Web 版：スマホでは、この体験を始めない（上半身が映るようにカメラから離れて立つのが難しいため。2026-11-12 HUMAN）。
+// 案内と入口へのリンクだけを出し、ここで止める（カメラも、ほかの準備も始めない）。?phone=1 で確かめられる
+if (cfg.phoneNotice === true && isPhone()) {
+  $('[data-screen="intro"]').replaceChildren(
+    h('div', { class: 'slide' }, h('h1', { class: 'slide-title' }, texts.get('phoneNotice.title')), h('div', { class: 'slide-body' }, h('p', {}, texts.get('phoneNotice.body')))),
+    h('div', { class: 'slide-nav' }, h('a', { class: 'btn btn-primary btn-big', href: '../../' }, texts.get('phoneNotice.back'))),
+  );
+  showScreen('intro');
+  await new Promise(() => {}); // このページの続きは動かさない
+}
 
 const css = getComputedStyle(document.documentElement);
 const color = (n, fb) => css.getPropertyValue(n).trim() || fb;

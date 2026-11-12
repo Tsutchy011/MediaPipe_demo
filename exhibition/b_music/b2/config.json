@@ -88,5 +88,6 @@
     ],
     "freeWindowSec": 10
   },
-  "modelTools": false
+  "modelTools": false,
+  "phoneNotice": true
 }
