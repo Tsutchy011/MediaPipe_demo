@@ -6,6 +6,13 @@
 //
 // 鍵盤の位置は「見えている画面」の座標（ミラー表示なら左右を反転した座標）で決める。
 // こうすると、ミラー表示でも画面の左が低い音になる（ふつうのピアノと同じ並び）。
+//
+// 見た目（2026-11-12 HUMAN：横から鍵盤を見たように）：鍵盤を前から鍵の高さで見た形。白鍵の前の面が並び、その上に白鍵の
+// 上の面が少し見え、奥に黒鍵が高く立つ。下に黒い枠。打鍵の線＝白鍵の前の面の上の辺（点線で示す）。黒鍵は飾り（鳴らない）。
+// 弾いた鍵は少し沈んで光る。前の面の高さは白鍵の幅の frontRatio 倍まで（縦長の画面でも鍵盤らしい形にする）。
+//
+// leadMs：指先の速さから、線を越える時刻を leadMs だけ先まで予測して、越える前に鳴らす（0 で使わない。
+// 音が出るまでの遅れを埋める。下向きに leadMinSpeed より速く動いているときだけ）。
 
 export class AirPiano {
   /**
@@ -20,6 +27,9 @@ export class AirPiano {
    * @param {number} o.minSpeed    これ以下の速さは velocity の最小にする [画素/秒]
    * @param {number} o.maxSpeed    これ以上の速さは velocity 127 にする [画素/秒]
    * @param {number[]} o.fingers   使う指先のランドマーク番号
+   * @param {number} o.frontRatio  白鍵の前の面の高さ（白鍵の幅に対する倍率の上限）
+   * @param {number} o.leadMs      線を越える時刻を、これだけ先まで予測して鳴らす [ms]（0 で使わない）
+   * @param {number} o.leadMinSpeed 予測して鳴らすのは、これより速いときだけ [画素/秒]
    * @param {(p:{note:number, velocity:number, speed:number, t:number, key:number})=>void} o.onPress
    * @param {(p:{note:number, key:number})=>void} o.onRelease
    */
@@ -35,6 +45,9 @@ export class AirPiano {
       minSpeed: 200,
       maxSpeed: 2500,
       fingers: [8],
+      frontRatio: 1.25,
+      leadMs: 0,
+      leadMinSpeed: 800,
       ...o,
     };
     this.tips = new Map(); // 指先ごとの前のフレームの位置と状態
@@ -85,7 +98,22 @@ export class AirPiano {
               st.key = key;
               this.down.set(key, (this.down.get(key) || 0) + 1);
               this.flash.set(key, performance.now());
-              this.o.onPress?.({ note: this.o.notes[key], velocity: this.velocityFor(speed), speed, t: tc, key });
+              this.o.onPress?.({ note: this.o.notes[key], velocity: this.velocityFor(speed), speed, t: tc, tFrame: tSec, key });
+            }
+          } else if (st.key < 0 && this.o.leadMs > 0 && y < this.o.line && y > prev.y) {
+            // まだ線の上だが、速く下へ動いていて、leadMs 以内に線を越える：先に鳴らす（音が出るまでの遅れを埋める）
+            const dt = tSec - prev.t;
+            const vy = (y - prev.y) / dt;
+            const tHit = (this.o.line - y) / vy;
+            const speed = Math.hypot((x - prev.x) * w, (y - prev.y) * h) / dt;
+            if (tHit <= this.o.leadMs / 1000 && speed >= this.o.leadMinSpeed) {
+              const key = this.keyAt(x + ((x - prev.x) / dt) * tHit);
+              if (key >= 0) {
+                st.key = key;
+                this.down.set(key, (this.down.get(key) || 0) + 1);
+                this.flash.set(key, performance.now());
+                this.o.onPress?.({ note: this.o.notes[key], velocity: this.velocityFor(speed), speed, t: tSec + tHit, tFrame: tSec, key, predicted: true });
+              }
             }
           } else if (st.key >= 0 && y < this.o.line - this.o.hysteresis) {
             this._release(st);
@@ -118,46 +146,91 @@ export class AirPiano {
     st.key = -1;
   }
 
-  /** 鍵盤を描く（左右反転していないキャンバスに、見えている画面の座標で） */
+  /**
+   * 鍵盤を描く（左右反転していないキャンバスに、見えている画面の座標で）。毎フレーム描くので、塗りと線だけにする。
+   * 前から鍵の高さで見た形：白鍵の前の面、その上に白鍵の上の面、奥に黒鍵、下に黒い枠。
+   */
   draw(ctx, w, h) {
     const { notes, labels, line, bottom, left, right } = this.o;
     ctx.clearRect(0, 0, w, h);
-    const kw = ((right - left) * w) / notes.length;
-    const top = line * h;
-    const hgt = (bottom - line) * h;
+    const n = notes.length;
+    const kw = ((right - left) * w) / n; // 白鍵の幅
+    const x0 = left * w;
+    const top = line * h; // 打鍵の線＝白鍵の前の面の上の辺
+    const H = Math.max(8, Math.min((bottom - line) * h, kw * this.o.frontRatio)); // 白鍵の前の面の高さ
+    const tb = H * 0.3; // 白鍵の上の面（線の上に見える帯）
+    const gap = Math.max(2, kw * 0.04); // 鍵の間のすき間
+    const rad = Math.min(kw * 0.1, H * 0.12); // 前の面の上の角の丸み
+    const sink = H * 0.08; // 弾いたときに沈む量
     const now = performance.now();
-    for (let i = 0; i < notes.length; i++) {
-      const x = left * w + i * kw;
-      const pressed = this.down.has(i);
+    const state = (i) => {
       const fl = Math.max(0, 1 - (now - (this.flash.get(i) ?? -1e9)) / 400);
-      ctx.fillStyle = pressed ? 'rgba(213, 94, 0, 0.6)' : `rgba(255, 255, 255, ${0.22 + 0.4 * fl})`;
-      ctx.fillRect(x + 3, top, kw - 6, hgt);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 3, top, kw - 6, hgt);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `bold ${Math.round(kw * 0.28)}px sans-serif`;
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'bottom';
-      ctx.shadowColor = 'rgba(0,0,0,0.6)';
-      ctx.shadowBlur = 6;
-      ctx.fillText(labels[i] ?? '', x + kw / 2, top + hgt - 10);
-      ctx.shadowBlur = 0;
+      const pressed = this.down.has(i);
+      return { pressed, glow: pressed ? 1 : fl, dy: pressed ? sink : sink * fl };
+    };
+    // 下の黒い枠
+    ctx.fillStyle = 'rgba(17, 20, 24, 0.85)';
+    ctx.fillRect(x0 - gap, top + H, n * kw + 2 * gap, Math.max(6, H * 0.22));
+    // 白鍵の上の面（線の上の帯）
+    for (let i = 0; i < n; i++) {
+      const { dy } = state(i);
+      ctx.fillStyle = 'rgba(226, 230, 236, 0.6)';
+      ctx.fillRect(x0 + i * kw + gap / 2, top - tb + dy, kw - gap, tb);
     }
-    // 打鍵の線
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
-    ctx.setLineDash([14, 10]);
-    ctx.lineWidth = 3;
+    // 黒鍵（白鍵どうしが全音はなれているところ。奥に高く立つ。鳴らない飾り）
+    const bw = kw * 0.46;
+    const bTop = top - tb - H * 0.27;
+    const bBottom = top - tb * 0.35;
+    for (let i = 0; i + 1 < n; i++) {
+      if (notes[i + 1] - notes[i] !== 2) continue;
+      const cx = x0 + (i + 1) * kw;
+      ctx.fillStyle = 'rgba(70, 74, 82, 0.9)'; // 上の面（少し明るく）
+      ctx.fillRect(cx - bw / 2, bTop - H * 0.07, bw, H * 0.07);
+      ctx.fillStyle = 'rgba(16, 18, 22, 0.92)'; // 前の面
+      ctx.fillRect(cx - bw / 2, bTop, bw, bBottom - bTop);
+    }
+    // 白鍵の前の面（上の角が丸い四角）。弾いた鍵は沈んで光る
+    const fs = Math.round(Math.min(kw * 0.42, H * 0.36));
+    ctx.font = `bold ${fs}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    for (let i = 0; i < n; i++) {
+      const { pressed, glow, dy } = state(i);
+      const x = x0 + i * kw + gap / 2;
+      const y = top + dy;
+      const ww = kw - gap;
+      const hh = H - dy;
+      ctx.beginPath();
+      ctx.moveTo(x, y + hh);
+      ctx.lineTo(x, y + rad);
+      ctx.arcTo(x, y, x + rad, y, rad);
+      ctx.lineTo(x + ww - rad, y);
+      ctx.arcTo(x + ww, y, x + ww, y + rad, rad);
+      ctx.lineTo(x + ww, y + hh);
+      ctx.closePath();
+      ctx.fillStyle = glow > 0 ? `rgba(${Math.round(250 - 37 * glow)}, ${Math.round(250 - 156 * glow)}, ${Math.round(250 - 250 * glow)}, ${0.8 + 0.1 * glow})` : 'rgba(250, 250, 250, 0.8)';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(148, 163, 184, 0.9)';
+      ctx.lineWidth = Math.max(1, gap * 0.4);
+      ctx.stroke();
+      ctx.fillStyle = pressed || glow > 0.5 ? '#ffffff' : '#334155';
+      ctx.fillText(labels[i] ?? '', x + ww / 2, y + hh - Math.max(4, H * 0.08));
+    }
+    // 打鍵の線（白鍵の前の面の上の辺。案内の文の「点線」）
+    ctx.strokeStyle = 'rgba(234, 88, 12, 0.95)';
+    ctx.setLineDash([Math.max(6, kw * 0.12), Math.max(4, kw * 0.08)]);
+    ctx.lineWidth = Math.max(2, kw * 0.035);
     ctx.beginPath();
-    ctx.moveTo(left * w, top);
-    ctx.lineTo(right * w, top);
+    ctx.moveTo(x0, top);
+    ctx.lineTo(x0 + n * kw, top);
     ctx.stroke();
     ctx.setLineDash([]);
     // 指先
+    const tipR = Math.max(10, kw * 0.14);
     for (const p of this.lastTips) {
       ctx.fillStyle = p.y < line ? '#ffd166' : '#d55e00';
       ctx.beginPath();
-      ctx.arc(p.x * w, p.y * h, 12, 0, Math.PI * 2);
+      ctx.arc(p.x * w, p.y * h, tipR, 0, Math.PI * 2);
       ctx.fill();
     }
   }

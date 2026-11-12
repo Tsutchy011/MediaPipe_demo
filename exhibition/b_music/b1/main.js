@@ -25,7 +25,7 @@ import { AirPiano } from './air_piano.js';
 import { HandRecorder, focusView, drawStrike } from './hand_replay.js';
 
 const DEFAULTS = {
-  camera: { width: 1280, height: 720, facingMode: 'user', mirror: 'auto', fps: 30, delegate: 'GPU' },
+  camera: { width: 1280, height: 720, facingMode: 'user', mirror: 'auto', fps: 30, delegate: 'GPU', syncFrame: false },
   speed: { landmark: 8, smoothing: 0 },
   strike: { preSec: 0.25, postSec: 0.04, videoLatencyMs: 60, videoLag: 'auto', videoLagInitMs: 80, debounceSec: 0.15, keys: [' '] },
   task: { count: 3, order: ['weak', 'strong'], pad: true },
@@ -104,6 +104,8 @@ const airPiano = new AirPiano({
   ...cfg.airPiano,
   onPress: (p) => {
     synth.noteOn(p.note, p.velocity);
+    // 確かめる用：音と動きのずれを測るとき（テストのスクリプトが window.__airTiming を用意したときだけ）、打鍵の時刻を残す
+    window.__airTiming?.push({ press: performance.now(), cross: p.t * 1000, frame: p.tFrame * 1000, base: synth.ctx?.baseLatency, out: synth.ctx?.outputLatency });
     addStrike({ t: p.t, velocity: null, airVelocity: p.velocity, source: 'air', label: cfg.airPiano.labels?.[p.key], note: p.note });
   },
   onRelease: (p) => synth.noteOff(p.note),
@@ -148,6 +150,8 @@ const cam = new CameraInput({
   fps: cfg.camera.fps,
   delegate: cfg.camera.delegate,
   camera: { width: cfg.camera.width, height: cfg.camera.height, facingMode: cfg.camera.facingMode },
+  // 推定に使ったコマを見せる（Web 版。仮想ピアノの音と、画面の指の動きをそろえる。config.web.json）
+  syncFrame: !!cfg.camera.syncFrame,
 });
 $('#mirror').onchange = (e) => cam.setMirror(e.target.checked);
 // ダミー入力のときは、ダミーの手が鍵盤に当たった瞬間にモックの note-on を出す（モック MIDI を使うときだけ）

@@ -9,6 +9,8 @@
 // - describe()：オプション（スタッフ用）の欄に出す状態。映像の大きさ・GPU/CPU・読み込み先・fps・見つかったコマの数・推定の時間。
 //   スマホで「見つからない」ときに、どこで止まっているかをこれで確かめる。
 // - 映像の縦横の比を、映像の枠（.video-wrap）の --video-ar に入れる（縦長のスマホでは枠も縦長になる。shared/style.css）。
+// - syncFrame：生の映像の代わりに、推定に使ったコマをキャンバスに描いて見せる（B-1 の Web 版）。映像は推定の時間だけ遅れるが、
+//   特徴点・鍵盤・音と同じ瞬間の絵になる（生の映像だと、指が線を越える絵が先に出て、音があとから鳴る）。
 //
 // 使い方：
 //   const cam = new CameraInput({ video, overlay, msg, kind: 'face', options: {...}, onResult, dummy: (tMs) => 結果 });
@@ -35,6 +37,7 @@ export class CameraInput {
    * @param {number} [o.fps]
    * @param {'GPU'|'CPU'} [o.delegate]
    * @param {object} [o.camera]            { width, height, facingMode }
+   * @param {boolean} [o.syncFrame]        推定に使ったコマを描いて見せる（特徴点・音と同じ瞬間の絵にする）
    */
   constructor(o) {
     this.o = { fps: 30, delegate: 'GPU', mirror: 'auto', camera: {}, ...o };
@@ -66,6 +69,7 @@ export class CameraInput {
   _applyMirror(on) {
     this.o.video.classList.toggle('mirror', on);
     this.o.overlay.classList.toggle('mirror', on);
+    this.frame?.classList.toggle('mirror', on);
     this.o.onMirror?.(on);
   }
 
@@ -93,7 +97,8 @@ export class CameraInput {
     if (this.mode === 'camera') {
       const st = this.stats;
       const dg = this.fellBack ? `${this.delegate}（GPU で見つからず切り替え）` : this.delegate;
-      return `カメラ ${this.videoSize.w}×${this.videoSize.h}・${dg}・${assetSource() === 'vendor' ? 'vendor' : 'CDN'}・${this.fps.toFixed(0)} fps・見つかった ${st.detected}/${st.frames} コマ・推定 ${Math.round(st.ms)} ms`;
+      const lat = st.lat ? `・撮ってから ${Math.round(st.lat)} ms` : '';
+      return `カメラ ${this.videoSize.w}×${this.videoSize.h}・${dg}・${assetSource() === 'vendor' ? 'vendor' : 'CDN'}・${this.fps.toFixed(0)} fps・見つかった ${st.detected}/${st.frames} コマ・推定 ${Math.round(st.ms)} ms${lat}`;
     }
     if (this.mode === 'dummy') return `ダミー入力・${this.fps.toFixed(0)} fps`;
     if (this.mode === 'loading') return '準備中…';
@@ -129,6 +134,7 @@ export class CameraInput {
         this.landmarker.detectForVideo(blank, 1);
       }
       this.stats = newStats();
+      this._useFrame(!!this.o.syncFrame);
       this.loop = new VideoLoop(this.o.video, (f) => this._onFrame(f), { fps: this.o.fps });
       this.loop.start();
       this.mode = 'camera';
@@ -153,6 +159,7 @@ export class CameraInput {
   /** ダミー入力で動かす */
   startDummy() {
     this.stop();
+    this._useFrame(false);
     this.mode = 'dummy';
     this.videoSize = { w: 1280, h: 720 };
     this._fitOverlay();
@@ -183,9 +190,27 @@ export class CameraInput {
     return listCameras();
   }
 
+  /** 推定に使ったコマを描くキャンバスを使うか（使うときは、生の映像を見えなくする。再生は続ける） */
+  _useFrame(on) {
+    if (on && !this.frame) {
+      this.frame = document.createElement('canvas');
+      this.frame.className = 'frame';
+      this.frame.classList.toggle('mirror', this.mirrored);
+      this.o.video.after(this.frame);
+      this.frameCtx = this.frame.getContext('2d', { alpha: false });
+    }
+    if (this.frame) this.frame.hidden = !on;
+    this.o.video.classList.toggle('behind-frame', on);
+    if (on) this._fitOverlay();
+  }
+
   _fitOverlay() {
     this.o.overlay.width = this.videoSize.w;
     this.o.overlay.height = this.videoSize.h;
+    if (this.frame && (this.frame.width !== this.videoSize.w || this.frame.height !== this.videoSize.h)) {
+      this.frame.width = this.videoSize.w;
+      this.frame.height = this.videoSize.h;
+    }
     // 映像の縦横の比を枠に伝える（縦長のスマホでは、枠も映像と同じ縦長にする。shared/style.css）
     this.o.video.parentElement?.style.setProperty('--video-ar', `${this.videoSize.w} / ${this.videoSize.h}`);
   }
@@ -196,12 +221,17 @@ export class CameraInput {
       this._fitOverlay();
     }
     if (this._switching) return;
+    // 推定に使うのと同じコマを描く（syncFrame のとき。特徴点・鍵盤・音と同じ瞬間の絵になる）
+    if (this.frame && !this.frame.hidden) this.frameCtx.drawImage(video, 0, 0, this.frame.width, this.frame.height);
     const t0 = performance.now();
     const result = this.landmarker.detectForVideo(video, t);
     const st = this.stats;
-    const ms = performance.now() - t0;
+    const t1 = performance.now();
+    const ms = t1 - t0;
     st.frames++;
     st.ms = st.frames === 1 ? ms : st.ms * 0.9 + ms * 0.1;
+    // 撮ってから結果が出るまで（撮った時刻が分かるときだけ。カメラの受け渡し＋待ち＋推定）
+    if (timeSource === 'capture') st.lat = st.lat ? st.lat * 0.9 + (t1 - t) * 0.1 : t1 - t;
     if (hasDetection(result)) st.detected++;
     // スマホの GPU で、しばらく何も見つからないときは CPU に切り替える（GPU だと結果が空のままになる機器がある）
     if (this.delegate === 'GPU' && !this._triedCpu && isTouchDevice() && st.frames >= 90 && st.detected === 0) this._fallbackToCpu();
@@ -233,7 +263,7 @@ export class CameraInput {
 }
 
 function newStats() {
-  return { frames: 0, detected: 0, ms: 0 };
+  return { frames: 0, detected: 0, ms: 0, lat: 0 };
 }
 
 /** 顔・手・体のどれかが見つかったか（MediaPipe の結果） */

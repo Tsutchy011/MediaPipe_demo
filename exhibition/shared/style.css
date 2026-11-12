@@ -350,6 +350,12 @@ p {
   transform: scaleX(-1);
 }
 
+/* 推定に使ったコマを描いているとき（shared/camera_ui.js の syncFrame）は、生の映像を見えなくする。
+   display: none にすると、スマホでは映像のコマが届かなくなることがあるので、透明にするだけ */
+.video-wrap video.behind-frame {
+  opacity: 0;
+}
+
 /* 縦長の画面（スマホ・タブレットを縦に持ったとき）：映像の枠を、カメラの映像と同じ縦横の比にする
    （縦長の映像なら枠も縦長。比は shared/camera_ui.js が --video-ar に入れる）。
    指示の文も見えるように、枠の高さは画面の 55% まで（そのぶん幅をせまくして、真ん中に置く） */
