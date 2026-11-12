@@ -61,7 +61,7 @@ export class AirPiano {
       leadMs: 0,
       leadMinSpeed: 800,
       blackAlpha: 0.45,
-      viewPitchDeg: 20,
+      viewPitchDeg: 30,
       lineDepth: 0,
       keyDepth: 3,
       viewDistance: 2.5,
