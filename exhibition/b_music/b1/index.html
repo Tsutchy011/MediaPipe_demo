@@ -13,6 +13,8 @@
   <section data-screen="intro" class="slides-screen">
     <div class="slide-foot">
       <span id="midiStatus" class="status">…</span>
+      <!-- Web 版だけ：MIDI 鍵盤で弾くかを選ぶ（config の midi.start が "option" のとき、パソコンとタブレットに出す） -->
+      <label id="useMidiIntroRow" class="midi-choice" hidden><input type="checkbox" id="useMidiIntro"> <span data-text="midi.option"></span></label>
       <span class="privacy-foot" data-text="privacy"></span>
       <button id="freeBtn" class="btn btn-small" data-text="freeButton"></button>
       <span class="staff-keys" data-text="staffKeys"></span>
@@ -92,6 +94,7 @@
       <div class="row">
         <label><span data-text="staff.camera"></span> <select id="camSelect"></select></label>
         <label><input type="checkbox" id="mirror"> <span data-text="staff.mirror"></span></label>
+        <label id="useMidiRow" hidden><input type="checkbox" id="useMidi"> <span data-text="midi.option"></span></label>
         <label><input type="checkbox" id="sound"> <span data-text="staff.sound"></span></label>
         <button id="dummyBtn" class="btn" data-text="staff.dummy"></button>
         <label><input type="checkbox" id="mockMidi"> <span data-text="staff.mockmidi"></span></label>

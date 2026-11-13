@@ -6,6 +6,8 @@
 // - MIDI 鍵盤の音は、このページで鳴らす（shared/piano.js：アイオワ大学のピアノの録音を、強さに合わせて pp・mf・ff から
 //   選んで鳴らす。録音がないときは合成音。音源のない鍵盤でも、弱い・強いが耳で分かるように）。
 // - MIDI がないとき：エラーにせず、指先の速さだけを表示する。打鍵はスペースキー（または画面のパッド）で代用する。
+// - Web 版（config の midi.start が 'option'）：はじめは画面の仮想ピアノで弾く。MIDI 鍵盤は、パソコンとタブレットで
+//   「MIDI 鍵盤で弾く」を選んだときだけ使う（2026-11-13 HUMAN）。
 // - 研究デモモード（自由に試す）：自由に弾き、打鍵ごとの（指先の速さ, velocity）を散布図に重ねる。
 //
 // 時刻はすべて performance.now() 基準。映像はカメラが撮った時刻（captureTime）を使い、MIDI の timeStamp とそろえる。
@@ -17,7 +19,7 @@ import { CameraInput, fillCameraSelect } from '../../shared/camera_ui.js';
 import { drawConnections, drawPoints, HAND_CONNECTIONS } from '../../shared/mediapipe.js';
 import { showScreen, setStatus, toggleFullscreen, requireHttp, fatal } from '../../shared/ui.js';
 import { Slides } from '../../shared/slides.js';
-import { $, h, isNum, sleep, isAbort, nowSec, flag, param, mean } from '../../shared/util.js';
+import { $, h, isNum, sleep, isAbort, nowSec, flag, param, mean, isPhone } from '../../shared/util.js';
 import { FingerSpeed, DummyHand } from './hand_metrics.js';
 import { MidiInput } from './midi.js';
 import { Piano } from '../../shared/piano.js';
@@ -31,6 +33,7 @@ const DEFAULTS = {
   task: { count: 3, order: ['weak', 'strong'], pad: true },
   live: { windowSec: 6, yMin: 1500 },
   sound: { enabled: true, volume: 0.8 },
+  midi: { start: 'auto' },
   airPiano: { enabled: 'auto', line: 0.6 },
   handLostSec: 0.6,
 };
@@ -65,6 +68,7 @@ let videoLag = typeof cfg.strike.videoLag === 'number' ? cfg.strike.videoLag / 1
 const lagOf = (s) => (s.source === 'air' ? 0 : videoLag);
 let lastHandT = -Infinity;
 const ui = { screen: 'intro', mode: 'exp', ac: null, phase: null, session: null, waiters: [] };
+let slidesReady = false; // 説明のスライドを作ったあとで true（MIDI の状態が先に変わることがあるため）
 
 // ===== 音（MIDI 鍵盤の音をここで鳴らす） =====
 const synth = new Piano({ volume: cfg.sound.volume, enabled: cfg.sound.enabled });
@@ -95,8 +99,48 @@ function refreshMidi() {
   const useKeys = !midi.connected && (!!ui.ac || ui.mode === 'free');
   $('#keyHint').hidden = !useKeys;
   $('#pad').hidden = !useKeys || cfg.task.pad === false; // Web 版では出さない（タップすると手がカメラから外れる。config.web.json）
+  syncSlides();
 }
-midi.start();
+
+// MIDI を使い始めるとき（config の midi.start）
+//   'auto'  ：開いたときに MIDI 鍵盤を探し、つながっていれば使う（会場版）
+//   'option'：はじめは画面の仮想ピアノで弾き、「MIDI 鍵盤で弾く」を選んだときだけ MIDI 鍵盤を使う（Web 版。2026-11-13 HUMAN：
+//             「基本は仮想のキーボード・キーボードのMIDIにより音を出力できるオプションもある」）。ブラウザに MIDI の使用を求める
+//             （許可の確認が出ることがある）のも、選んだときだけ。選ぶ欄は、パソコンとタブレットだけに出す（スマホは仮想ピアノだけ）。
+//             ?midi=1 で開くと、はじめから選んだ状態になる
+//             （選ぶ欄の用意は、ページの最後の initMidiOption で）
+const midiOption = cfg.midi.start === 'option';
+const midiBoxes = [$('#useMidi'), $('#useMidiIntro')];
+async function setUseMidi(on) {
+  for (const box of midiBoxes) box.checked = on;
+  if (!on) synth.stopAll(); // 押したままの音が残らないように（MIDI を止めると、離した知らせが届かない）
+  await midi.setEnabled(on);
+  if (cam.mode === 'dummy') refreshStaff();
+  drawScatter(); // 散布図の縦軸の名前（仮想ピアノか MIDI 鍵盤か）
+}
+function initMidiOption() {
+  const canChoose = !isPhone();
+  for (const row of [$('#useMidiRow'), $('#useMidiIntroRow')]) row.hidden = !canChoose;
+  for (const box of midiBoxes) {
+    box.onchange = (e) => {
+      e.target.blur(); // 選んだあとのスペースキーが、この欄の切り替えではなく「次へ」（体験中は打鍵）になるように
+      setUseMidi(e.target.checked);
+    };
+  }
+  setUseMidi(canChoose && flag('midi'));
+}
+if (midiOption) midi.enabled = false;
+else midi.start();
+
+/** MIDI 鍵盤で弾くときは、説明のスライドを MIDI 鍵盤の文（texts の slidesMidi。Web 版だけにある）にする */
+function syncSlides() {
+  if (!slidesReady || !texts.data.slidesMidi) return;
+  const want = texts.get(midi.connected ? 'slidesMidi' : 'slides');
+  if (slides.slides === want) return;
+  slides.slides = want;
+  slides.index = Math.min(slides.index, want.length - 1);
+  slides.render();
+}
 
 // ===== 空中の仮想ピアノ（MIDI 鍵盤がないとき：Web 版など） =====
 // 指先が鍵盤の線を上から下へ越えたら打鍵。そのときの指先の速さで音の強さを決める
@@ -243,6 +287,7 @@ $('#pad').addEventListener('pointerdown', (e) => {
 
 // ===== 画面の切り替え =====
 const slides = new Slides($('[data-screen="intro"]'), { slides: texts.get('slides'), labels: texts.get('slideNav'), onStart: () => startExperience() });
+slidesReady = true;
 
 function go(screen) {
   ui.screen = screen;
@@ -621,10 +666,14 @@ function scatterPlot(canvas, points, { xLabel, yLabel, labels = false }) {
 
 // ===== 研究デモモード（散布図） =====
 const scatter = $('#scatter');
+// 仮想ピアノの打鍵も点にする（縦軸は、指の速さから決めた音の強さ。2026-11-13 HUMAN）。MIDI 鍵盤の点（オレンジ）と色を分ける（青）。
+// 縦軸の名前は、いま仮想ピアノで弾いているか（airActive）で替える
 function drawScatter() {
   if ($('#scatterBox').hidden) return;
-  const pts = strikes.filter((s) => s.phase === 'free' && isNum(s.peak) && isNum(s.velocity)).map((s) => ({ x: s.peak, y: s.velocity, color: COL.strong }));
-  scatterPlot(scatter, pts, { xLabel: texts.get('free.scatterX'), yLabel: texts.get('free.scatterY') });
+  const pts = strikes
+    .filter((s) => s.phase === 'free' && isNum(s.peak) && isNum(velOf(s)))
+    .map((s) => ({ x: s.peak, y: velOf(s), color: s.source === 'air' ? COL.weak : COL.strong }));
+  scatterPlot(scatter, pts, { xLabel: texts.get('free.scatterX'), yLabel: texts.get(airActive() ? 'free.scatterYAir' : 'free.scatterY') });
 }
 $('#clearBtn').addEventListener('click', () => {
   for (let i = strikes.length - 1; i >= 0; i--) if (strikes[i].phase === 'free') strikes.splice(i, 1);
@@ -674,13 +723,21 @@ window.addEventListener('keydown', (e) => {
 
 // ===== スタッフ用 =====
 async function refreshStaff() {
-  if (cam.mode === 'dummy' && flag('air')) {
-    // ダミー入力で仮想ピアノを試す（?dummy=1&air=1）：ダミーの手を線の少し上に置き、大きく振って線を越えて戻るようにする
+  if (cam.mode === 'dummy' && (flag('air') || (midiOption && !midi.enabled))) {
+    // ダミー入力で仮想ピアノを試す（?dummy=1&air=1。Web 版で「MIDI 鍵盤で弾く」を選んでいないときも）：
+    // ダミーの手を線の少し上に置き、大きく振って線を越えて戻るようにする
     const line = cfg.airPiano.line ?? 0.6;
     const hys = cfg.airPiano.hysteresis ?? 0.04;
     dummyHand.yShift = line - hys - 0.03 - 0.39; // 人差し指の先（もとの位置 0.39）を、離鍵の高さより少し上に
     dummyHand.ampScale = 2.2;
+    if (midiOption && midi.mock && !flag('mockmidi')) {
+      midi.mock = false; // 「MIDI 鍵盤で弾く」をやめたとき、モック MIDI もやめる
+      $('#mockMidi').checked = false;
+      refreshMidi();
+    }
   } else if (cam.mode === 'dummy' && !midi.connected) {
+    dummyHand.yShift = 0;
+    dummyHand.ampScale = 1;
     midi.mock = true; // ダミー入力では、ダミーの手の打鍵からモックの note-on を出す
     $('#mockMidi').checked = true;
     refreshMidi();
@@ -714,6 +771,7 @@ function frame() {
   requestAnimationFrame(frame);
 }
 go('intro');
+if (midiOption) initMidiOption();
 refreshMidi();
 requestAnimationFrame(frame);
 if (flag('free')) enterFree();

@@ -51,6 +51,10 @@
     "volume": 0.8,
     "_": "MIDI 鍵盤の音をブラウザで鳴らす（音源のない鍵盤のため）。鍵盤に音源があって二重に鳴るときは enabled を false"
   },
+  "midi": {
+    "start": "option"
+  },
+  "_midi": "start：\"auto\" は、開いたときに MIDI 鍵盤を探し、つながっていれば使う（会場版）。\"option\" は、はじめは画面の仮想ピアノで弾き、「MIDI鍵盤で弾く」を選んだときだけ MIDI 鍵盤を使う（Web 版。config.web.json。ブラウザに MIDI の使用を求めるのも、選んだときだけ。選ぶ欄はパソコンとタブレットだけに出す。2026-11-13 HUMAN）",
   "airPiano": {
     "enabled": "auto",
     "_enabled": "auto：MIDI 鍵盤がつながっていないとき（Web 版など）に、画面の仮想ピアノで弾けるようにする。true：いつも使う。false：使わない",

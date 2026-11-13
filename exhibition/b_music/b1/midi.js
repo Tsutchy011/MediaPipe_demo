@@ -3,6 +3,8 @@
 // - note-on の時刻は MIDIMessageEvent.timeStamp（performance.now() と同じ基準のミリ秒）。
 // - MIDI が使えない（Safari など）・許可されない・つながっていないときもエラーにせず、state と describe() で知らせる。
 // - 動作確認用の「モック MIDI」：PC のキーボードの 1〜9 で note-on を出す（velocity は 14〜127）。?mockmidi=1 か、ダミー入力のときに使う。
+// - enabled：false の間は MIDI を使わない（Web 版で、オプションの「MIDI 鍵盤で弾く」を選ぶまで）。
+//   ブラウザに MIDI の使用を求める（許可の確認が出ることがある）のは、start() か setEnabled(true) のときだけ。
 
 export class MidiInput extends EventTarget {
   constructor() {
@@ -12,9 +14,12 @@ export class MidiInput extends EventTarget {
     this.inputs = [];
     this.onNoteOn = null;
     this.mock = false;
+    this.enabled = true;
+    this.started = false;
   }
 
   async start() {
+    this.started = true;
     if (!navigator.requestMIDIAccess) {
       this.state = 'unsupported';
       this._changed();
@@ -33,9 +38,17 @@ export class MidiInput extends EventTarget {
     this._bind();
   }
 
+  /** MIDI を使うかを切り替える。はじめて使うときに start() する */
+  async setEnabled(on) {
+    this.enabled = !!on;
+    if (this.enabled && !this.started) await this.start();
+    else if (this.access) this._bind();
+    else this._changed();
+  }
+
   _bind() {
     this.inputs = [...this.access.inputs.values()];
-    for (const input of this.inputs) input.onmidimessage = (e) => this._onMessage(e);
+    for (const input of this.inputs) input.onmidimessage = this.enabled ? (e) => this._onMessage(e) : null;
     this._changed();
   }
 
@@ -63,12 +76,13 @@ export class MidiInput extends EventTarget {
   }
 
   get connected() {
-    return this.mock || (this.state === 'ready' && this.inputs.some((i) => i.state === 'connected'));
+    return this.mock || (this.enabled && this.state === 'ready' && this.inputs.some((i) => i.state === 'connected'));
   }
 
   /** 状態の説明（[種類, 文] の形） */
   describe(texts) {
     if (this.mock) return ['warn', texts.get('midi.mock')];
+    if (!this.enabled) return ['idle', texts.get('midi.off')];
     if (this.state === 'unsupported') return ['warn', texts.get('midi.unsupported')];
     if (this.state === 'denied') return ['warn', texts.get('midi.denied')];
     if (this.state !== 'ready') return ['idle', texts.get('midi.checking')];

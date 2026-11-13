@@ -268,3 +268,19 @@
     display: none;
   }
 }
+
+/* Web 版：説明の画面の下の「MIDI 鍵盤で弾く」（config の midi.start が "option" のとき。パソコンとタブレットだけ） */
+.slide-foot .midi-choice {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #f2f2f2;
+}
+
+.slide-foot .midi-choice input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: var(--c1, #2a7ab0);
+}
