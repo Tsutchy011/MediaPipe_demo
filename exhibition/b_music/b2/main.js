@@ -61,7 +61,8 @@ if (cfg.modelTools === false) $('#recordBtn').closest('.row').hidden = true;
 if (cfg.phoneNotice === true && isPhone()) {
   $('[data-screen="intro"]').replaceChildren(
     h('div', { class: 'slide' }, h('h1', { class: 'slide-title' }, texts.get('phoneNotice.title')), h('div', { class: 'slide-body' }, h('p', {}, texts.get('phoneNotice.body')))),
-    h('div', { class: 'slide-nav' }, h('a', { class: 'btn btn-primary btn-big', href: '../../' }, texts.get('phoneNotice.back'))),
+    // 戻る先：Web 版の入口（../../）。HP に置いた版は、HP の MediaPipe のデモの一覧（cfg.entryUrl。scripts/build_hp.sh が入れる）
+    h('div', { class: 'slide-nav' }, h('a', { class: 'btn btn-primary btn-big', href: cfg.entryUrl || '../../' }, texts.get('phoneNotice.back'))),
   );
   showScreen('intro');
   await new Promise(() => {}); // このページの続きは動かさない
@@ -145,7 +146,8 @@ async function loadModel() {
   if (validModel(local) && sameMode(local)) {
     model = local;
     modelSource = 'local';
-  } else {
+  } else if (cfg.model.url) {
+    // Web 版には model.json を入れないので、url を空にして読みに行かない（config.web.json。ないファイルを読むと、HP の点検で「読み込めないファイル」になる）
     try {
       const m = await loadJSON(cfg.model.url);
       if (validModel(m) && sameMode(m)) {
@@ -850,6 +852,8 @@ setInterval(() => setStatus($('#camStatus'), cam.mode === 'camera' ? 'ok' : cam.
 await loadModel();
 showScreen('intro');
 requestAnimationFrame(frame);
+// ?free=1 で開くと、説明を飛ばして「自由に試す」から始める（B-1・C-1 と同じ。HP の一覧の「自由に試す」のリンク）
+if (flag('free')) enterFree();
 
 // 確認用（ブラウザの開発者ツールから見られる）
 window.__b2 = { cfg, ui, angle, cam, dummyPose, get model() { return model; }, get guide() { return guide; }, compareCurves, compareTiming, modelPosAt, modelAt, posFromCamera, cameraAngle, builtinModel };

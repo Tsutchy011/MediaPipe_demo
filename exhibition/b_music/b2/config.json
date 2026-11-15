@@ -54,7 +54,7 @@
   },
   "_figure": "お手本の図（ヴァイオリンを弾く人）。左に「正面」（鏡に映した向き）、右に「上から」（前が画面の下）を並べる。yawDeg：右側をこちらへ回す角度、pitchDeg：見下ろす角度、distM：遠近の強さ（小さいほど強い）",
   "model": {
-    "url": "model.json",
+    "url": "",
     "recordSec": 10.6,
     "rate": 30,
     "smoothSec": 0.2,

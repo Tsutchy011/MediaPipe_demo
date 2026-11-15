@@ -7,7 +7,8 @@
 // ピアノ風の音で鳴らす。
 // ブラウザの決まりで、ページを一度クリックするかキーを押すまでは音が出ない（unlock() をその操作の中で呼ぶ）。
 //
-// 使い方：B-1（MIDI 鍵盤の音）は noteOn / noteOff / setSustain、A-3（旋律）は play(notes)（時刻を指定して鳴らす）。
+// 使い方：B-1（MIDI 鍵盤の音）は noteOn / noteOff / setSustain、B-1 の結果のスロー再生は noteAt（聞こえる時刻を指定して
+// 鳴らす）、A-3（旋律）は play(notes)（時刻を指定して鳴らす）。
 
 const BASE = new URL('../vendor/piano/', import.meta.url);
 const LAYERS = ['pp', 'mf', 'ff'];
@@ -106,6 +107,39 @@ export class Piano {
     this.held.delete(note);
     const v = this._voice(note, velocity, t);
     if (v) this.keys.set(note, v);
+  }
+
+  /**
+   * performance.now() の時刻 perfMs に「聞こえる」ように鳴らすときの、AudioContext の時刻（秒）。
+   * 音は、鳴らしてから聞こえるまでに遅れがある（スピーカーで数十 ms、Bluetooth のイヤホンでは 0.1〜0.3 秒）ので、
+   * その分だけ先の時刻にする。いまより前になるときは、いま。
+   */
+  ctxTimeAt(perfMs) {
+    const ctx = this.ctx;
+    // ブラウザが知らせる遅れ（baseLatency・outputLatency）から見積もる
+    let t = ctx.currentTime + (perfMs - performance.now()) / 1000 - ((ctx.baseLatency || 0) + (ctx.outputLatency || 0));
+    // いま聞こえている音の、AudioContext の時刻と performance.now() の時刻（あれば、こちらを使う。Bluetooth の遅れなども入る）。
+    // 見積もりと 0.5 秒以上ちがうとき（時刻の基準がちがうなど、おかしな値のとき）は使わない
+    const out = ctx.getOutputTimestamp?.();
+    if (out && out.contextTime > 0 && out.performanceTime > 0) {
+      const t2 = out.contextTime + (perfMs - out.performanceTime) / 1000;
+      if (Math.abs(t2 - t) < 0.5) t = t2;
+    }
+    return Math.max(ctx.currentTime, t);
+  }
+
+  /**
+   * 1つの音を、performance.now() の時刻 perfMs に聞こえるように予約して鳴らし、dur 秒で離す（B-1 の結果のスロー再生など、
+   * 鳴らす瞬間が前もって分かるとき）。stopAll で止まる。
+   * @returns {number|null} 鳴らし始める AudioContext の時刻（鳴らせないときは null）
+   */
+  noteAt(note, velocity, perfMs, dur = 0.7) {
+    if (!this.enabled || !this.ctx) return null;
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    const when = this.ctxTimeAt(perfMs);
+    const v = this._voice(note, velocity, when);
+    if (v) this._stop(v, when + dur, 0.25);
+    return when;
   }
 
   noteOff(note) {

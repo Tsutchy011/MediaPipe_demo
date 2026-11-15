@@ -251,7 +251,8 @@ function onResult(result, tMs, info) {
     keysCanvas.height = hgt;
   }
   if (airActive() && ui.screen === 'main') {
-    const hands = result.landmarks || [];
+    // 結果のスロー再生の間は、鍵盤を出したまま鳴らさない（再生の音と、手を動かして鳴った音が混ざらないように）
+    const hands = replay.on ? [] : result.landmarks || [];
     const ids = (result.handedness || []).map((c, i) => c?.[0]?.categoryName || i);
     airPiano.update(hands.slice(0, 1), w, hgt, t, cam.mirrored, ids);
     airPiano.draw(kctx, w, hgt);
@@ -432,6 +433,7 @@ async function runExperience() {
 function abortExperience() {
   ui.ac?.abort();
   handRec.stop();
+  if (replay.on) synth.stopAll(); // スロー再生の途中でやめたとき、予約した音を止める
   replay.on = false;
   ui.ac = null;
   ui.phase = null;
@@ -473,9 +475,14 @@ function estimateLag(list) {
 // ===== 結果：弱く弾いたとき／強く弾いたときを左右に並べる =====
 // コマ送り（鍵盤が鳴る直前の指先の位置を、1コマごとの点で重ねる）と、指の速さ・音の強さの棒（3回の平均）。
 // 「スローで再生」では、記録した手の座標で指の動きをゆっくり再生し、鍵盤が鳴る瞬間にその強さで音を鳴らす（弱→強）。
+// 手はコマの間も補ってなめらかに動かし、鳴る瞬間に、指先がちょうど白い輪の位置に来る（hand_replay.js の poseAt）。
+// 音は、輪が画面に出る瞬間に聞こえるように、音が出るまでの遅れの分だけ先に予約する（2026-11-15 HUMAN：「結果で丸がつく
+// 動作と音にやはりずれがある」）。輪は、鳴る時刻を過ぎた最初の描画で描かれ、画面に出るのはその1〜2コマあと（SOUND_AFTER_FRAMES）。
 const CLIP = { before: 0.6, after: 0.35, trail: 0.4, slow: 0.25 };
+const SOUND_AHEAD_MS = 350; // 何 ms 前から予約するか（Bluetooth のイヤホンの遅れ 0.1〜0.3 秒も埋められるように）
+const SOUND_AFTER_FRAMES = 2;
 const res = { weak: null, strong: null, view: null };
-const replay = { on: false, which: null, t: 0, last: 0, fired: false };
+const replay = { on: false, which: null, t: 0, last: 0, fired: false, frameMs: 1000 / 60, drawn: null, sound: null };
 
 /** 3回のうち、指の速さがまん中の回（その組を代表する打鍵） */
 function representative(list) {
@@ -548,6 +555,7 @@ function showResult(t0, t1) {
 function startReplay() {
   if (!res.weak && !res.strong) return;
   synth.unlock();
+  if (replay.on) synth.stopAll(); // 再生の途中でもう一度押したとき、予約した音を止める
   replay.on = true;
   replay.which = res.weak ? 'weak' : 'strong';
   replay.t = res[replay.which].tv - CLIP.before;
@@ -559,14 +567,17 @@ function drawResult(now) {
   // スロー再生を進める（鍵盤が鳴る瞬間に、その強さで音を鳴らす）
   if (replay.on) {
     const r = res[replay.which];
-    replay.t += ((now - replay.last) / 1000) * CLIP.slow;
-    if (!replay.fired && replay.t >= r.tv) {
+    const dt = Math.max(0, now - replay.last);
+    if (dt > 2 && dt < 100) replay.frameMs += (dt - replay.frameMs) * 0.1; // 描画の間隔（画面の書き換えの速さ）
+    replay.t += (dt / 1000) * CLIP.slow;
+    const untilMs = ((r.tv - replay.t) / CLIP.slow) * 1000; // 鳴る瞬間まで（実際の時間）
+    if (!replay.fired && untilMs <= SOUND_AHEAD_MS) {
       replay.fired = true;
       const v = velOf(r.strike);
       if (isNum(v)) {
-        const note = r.strike.note ?? 60;
-        synth.noteOn(note, v);
-        setTimeout(() => synth.noteOff(note), 700);
+        const at = now + Math.max(0, untilMs) + SOUND_AFTER_FRAMES * replay.frameMs; // 輪が画面に出るころ
+        const when = synth.noteAt(r.strike.note ?? 60, v, at);
+        replay.sound = { which: replay.which, at, when, ctxNow: synth.ctx?.currentTime, perfNow: now }; // 確かめる用
       }
     }
     if (replay.t > r.tv + CLIP.after) {
@@ -596,7 +607,7 @@ function drawResult(now) {
       continue;
     }
     const upTo = replay.on && replay.which === key ? replay.t : replay.on ? c.tv - CLIP.before : Infinity;
-    drawStrike(g, c.frames, c.tv, upTo, {
+    const drawn = drawStrike(g, c.frames, c.tv, upTo, {
       W: r.width,
       H: r.height,
       size: res.view.size,
@@ -606,6 +617,7 @@ function drawResult(now) {
       color: key === 'weak' ? COL.weak : COL.strong,
       trailSec: CLIP.trail,
     });
+    if (replay.on && replay.which === key) replay.drawn = drawn; // 確かめる用（いま描いた指先と輪）
   }
 }
 
@@ -776,4 +788,4 @@ refreshMidi();
 requestAnimationFrame(frame);
 if (flag('free')) enterFree();
 
-window.__b = { cfg, speed, strikes, cam, midi, synth, ui, log, slides, res, replay, handRec, getLag: () => videoLag, estimateLag };
+window.__b = { cfg, speed, strikes, cam, midi, synth, ui, log, slides, res, replay, handRec, dummyHand, getLag: () => videoLag, estimateLag };
